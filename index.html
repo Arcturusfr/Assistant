@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Chantier — suivi des choses à faire</title>
+<title>Assistant — suivi des choses à faire</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -66,12 +66,6 @@
     flex:0 0 auto;
   }
   .brand{display:flex; align-items:baseline; gap:8px; flex:1; min-width:0;}
-  .brand-mark{
-    width:30px; height:30px; border-radius:9px; background:var(--brand);
-    display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-display); font-weight:700; color:#fff; font-size:15px;
-    flex:0 0 auto;
-  }
   .brand-name{font-weight:700; font-size:19px; white-space:nowrap;}
   .version-badge{
     font-family:var(--font-body); font-size:11px; font-weight:600;
@@ -150,7 +144,8 @@
   svg.matrix-svg{width:100%; height:auto; display:block; touch-action:none;}
   .bubble{cursor:grab;}
   .bubble.dragging{cursor:grabbing;}
-  .bubble-hit{fill:transparent;}
+  .bubble-hit{fill:#000; opacity:0;}
+  .resize-hit{fill:#000; opacity:0;}
   .quad-label{font-family:var(--font-body); font-size:9.5px; font-weight:700; letter-spacing:0.04em; fill:var(--ink-3); text-transform:uppercase;}
   .axis-label{font-family:var(--font-body); font-size:10.5px; font-weight:600; fill:var(--ink-2);}
   .resize-handle{fill:var(--surface); stroke:var(--ink); stroke-width:2; cursor:nwse-resize;}
@@ -162,7 +157,10 @@
   .kcol-title{font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-2);}
   .kcol-count{font-size:11px; font-weight:700; background:var(--surface); border-radius:100px; padding:1px 7px; color:var(--ink-2);}
   .kcol-body{flex:1; display:flex; flex-direction:column; gap:8px; min-height:60px;}
-  .kcol-body.drop-hover{outline:2px dashed var(--brand); outline-offset:-4px; border-radius:10px;}
+  .card-placeholder{
+    border:2px dashed var(--brand); border-radius:var(--radius-s);
+    background:rgba(36,80,240,0.06); flex:0 0 auto;
+  }
 
   .card{
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-s);
@@ -286,13 +284,16 @@
 
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark">C</div>
-      <span class="brand-name">Chantier</span>
+      <span class="brand-name">Assistant</span>
       <span class="version-badge">v1.0</span>
     </div>
     <div class="topbar-actions">
-      <button class="icon-btn" id="btn-export" title="Exporter en JSON">⭳</button>
-      <button class="icon-btn" id="btn-import" title="Importer un JSON">⭱</button>
+      <button class="icon-btn" id="btn-export" title="Exporter en JSON">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-import" title="Importer un JSON">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 13l5-5 5 5"/><path d="M4 4h16"/></svg>
+      </button>
     </div>
   </header>
 
@@ -313,7 +314,7 @@
           </div>
         </div>
         <div class="matrix-wrap">
-          <svg class="matrix-svg" id="matrix-svg" viewBox="0 0 420 420" preserveAspectRatio="xMidYMid meet"></svg>
+          <svg class="matrix-svg" id="matrix-svg" viewBox="0 0 460 460" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
         <div class="matrix-legend" id="matrix-legend"></div>
       </section>
@@ -333,7 +334,7 @@
       <section class="view" id="view-list">
         <div class="view-header">
           <div>
-            <h1 class="view-title">Toutes les tâches</h1>
+            <h1 class="view-title">Tâches</h1>
             <p class="view-sub" id="list-count-sub"></p>
           </div>
         </div>
@@ -406,7 +407,7 @@
   "use strict";
 
   /* ============ STORAGE (localStorage avec repli mémoire) ============ */
-  const STORAGE_KEY = "chantier_v1_tasks";
+  const STORAGE_KEY = "assistant_v1_tasks";
   let memoryFallback = null;
   let usesMemory = false;
   function storageGet(){
@@ -490,7 +491,7 @@
 
   /* ============ MATRIX VIEW ============ */
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const MX = { size:420, pad:46 };
+  const MX = { size:460, pad:64 };
 
   function scaleX(u){ // urgency 1..5 -> px
     return MX.pad + (u-1)/4 * (MX.size - MX.pad*2);
@@ -506,7 +507,8 @@
     let imp = 1 + ((MX.size - MX.pad) - py) / (MX.size - MX.pad*2) * 4;
     return Math.min(5, Math.max(1, imp));
   }
-  function radiusFor(c){ return 13 + (c-1) * 5.2; } // complexité 1..5 -> 13..33.8
+  const R_MIN = 14, R_STEP = 11; // rayon: complexité 1 -> 14px, complexité 5 -> 58px
+  function radiusFor(c){ return R_MIN + (c-1) * R_STEP; }
 
   function svgEl(tag, attrs){
     const el = document.createElementNS(SVG_NS, tag);
@@ -558,24 +560,24 @@
       const g = svgEl('g', {class:'bubble', 'data-id':t.id});
       const cat = CATEGORIES[t.category] || CATEGORIES.autre;
 
-      const circle = svgEl('circle', {cx, cy, r, fill:cat.color, opacity:0.88, stroke:'#fff', 'stroke-width':2});
+      const circle = svgEl('circle', {cx, cy, r, fill:cat.color, opacity:0.88, stroke:'#fff', 'stroke-width':2, 'data-role':'main'});
       g.appendChild(circle);
 
-      const icon = svgEl('text', {x:cx, y:cy+5, 'text-anchor':'middle', 'font-size':Math.max(12, r*0.7), style:'pointer-events:none;'});
+      const icon = svgEl('text', {x:cx, y:cy+5, 'text-anchor':'middle', 'font-size':Math.max(12, r*0.7), style:'pointer-events:none;', 'data-role':'icon'});
       icon.textContent = cat.icon; g.appendChild(icon);
 
-      // bigger invisible hit target for touch
-      const hit = svgEl('circle', {cx, cy, r:Math.max(r, 24), class:'bubble-hit'});
+      // bigger invisible hit target for touch — needs a real (if 0-opacity) fill to be hit-testable
+      const hit = svgEl('circle', {cx, cy, r:Math.max(r, 26), class:'bubble-hit', 'data-role':'hit'});
       g.appendChild(hit);
 
-      // resize handle (bottom-right of bubble)
+      // resize handle (bottom-right of bubble), with its own larger invisible touch target
       const hx = cx + r*0.71, hy = cy + r*0.71;
+      const resizeHit = svgEl('circle', {cx:hx, cy:hy, r:18, class:'resize-hit', 'data-role':'resize-hit'});
+      g.appendChild(resizeHit);
       const handle = svgEl('circle', {cx:hx, cy:hy, r:9, class:'resize-handle', 'data-role':'resize'});
       g.appendChild(handle);
 
       svg.appendChild(g);
-
-      g.addEventListener('pointerdown', onBubblePointerDown);
     });
 
     // Legend
@@ -585,60 +587,24 @@
     ).join('');
   }
 
-  function onBubblePointerDown(ev){
-    const g = ev.currentTarget;
-    const id = g.getAttribute('data-id');
-    const role = ev.target.getAttribute('data-role');
-    dragState = { id, mode: role === 'resize' ? 'resize' : 'move', pointerId: ev.pointerId };
-    g.classList.add('dragging');
-    g.setPointerCapture(ev.pointerId);
-    g.addEventListener('pointermove', onBubblePointerMove);
-    g.addEventListener('pointerup', onBubblePointerUp);
-    g.addEventListener('pointercancel', onBubblePointerUp);
-    ev.preventDefault();
-  }
-
-  function onBubblePointerMove(ev){
-    if(!dragState || ev.pointerId !== dragState.pointerId) return;
+  // Update one bubble's on-screen position/size directly, without rebuilding the whole SVG.
+  // This keeps the drag gesture smooth and avoids ever destroying the element mid-drag.
+  function updateBubbleVisual(t){
     const svg = document.getElementById('matrix-svg');
-    const pt = svgPoint(svg, ev.clientX, ev.clientY);
-    const t = findTask(dragState.id);
-    if(!t) return;
-
-    if(dragState.mode === 'move'){
-      t.urgency = Math.round(unscaleX(pt.x) * 10) / 10;
-      t.importance = Math.round(unscaleY(pt.y) * 10) / 10;
-    } else {
-      const cx = scaleX(t.urgency), cy = scaleY(t.importance);
-      const dist = Math.hypot(pt.x - cx, pt.y - cy) / 0.71;
-      const c = 1 + (dist - 13) / 5.2;
-      t.complexity = Math.min(5, Math.max(1, Math.round(c)));
-    }
-    persist();
-    renderMatrix();
-  }
-
-  function onBubblePointerUp(ev){
-    if(!dragState) return;
-    const t = findTask(dragState.id);
-    if(t){
-      t.urgency = Math.round(t.urgency);
-      t.importance = Math.round(t.importance);
-      persist();
-    }
-    const g = ev.currentTarget;
-    g.classList.remove('dragging');
-    g.removeEventListener('pointermove', onBubblePointerMove);
-    g.removeEventListener('pointerup', onBubblePointerUp);
-    g.removeEventListener('pointercancel', onBubblePointerUp);
-    const wasClick = dragState._moved !== true;
-    dragState = null;
-    renderMatrix();
-    if(wasClick && ev.type === 'pointerup'){
-      // simple tap distance check handled via movementless small change; open sheet
-      const id = g.getAttribute('data-id');
-      if(id) openSheet(id);
-    }
+    const g = svg.querySelector(`[data-id="${t.id}"]`);
+    if(!g) return;
+    const cx = scaleX(t.urgency), cy = scaleY(t.importance), r = radiusFor(t.complexity);
+    const main = g.querySelector('[data-role="main"]');
+    const icon = g.querySelector('[data-role="icon"]');
+    const hit = g.querySelector('[data-role="hit"]');
+    const handle = g.querySelector('[data-role="resize"]');
+    const resizeHit = g.querySelector('[data-role="resize-hit"]');
+    main.setAttribute('cx', cx); main.setAttribute('cy', cy); main.setAttribute('r', r);
+    icon.setAttribute('x', cx); icon.setAttribute('y', cy+5); icon.setAttribute('font-size', Math.max(12, r*0.7));
+    hit.setAttribute('cx', cx); hit.setAttribute('cy', cy); hit.setAttribute('r', Math.max(r, 26));
+    const hx = cx + r*0.71, hy = cy + r*0.71;
+    handle.setAttribute('cx', hx); handle.setAttribute('cy', hy);
+    resizeHit.setAttribute('cx', hx); resizeHit.setAttribute('cy', hy);
   }
 
   function svgPoint(svg, clientX, clientY){
@@ -648,14 +614,62 @@
     return pt.matrixTransform(ctm);
   }
 
-  // distinguish tap vs drag: track movement threshold
-  (function patchMoveTracking(){
-    const origMove = onBubblePointerMove;
-    onBubblePointerMove = function(ev){
-      if(dragState) dragState._moved = true;
-      origMove(ev);
+  // Drag is bound once to the SVG root (which is never destroyed) rather than to each
+  // bubble (which gets rebuilt every render) — that mismatch was why dragging felt broken.
+  function initMatrixDrag(){
+    const svg = document.getElementById('matrix-svg');
+
+    svg.addEventListener('pointerdown', (ev)=>{
+      const bubble = ev.target.closest('.bubble');
+      if(!bubble) return;
+      const role = ev.target.getAttribute('data-role');
+      const mode = (role === 'resize' || role === 'resize-hit') ? 'resize' : 'move';
+      dragState = { id: bubble.getAttribute('data-id'), mode, pointerId: ev.pointerId, startX: ev.clientX, startY: ev.clientY, moved:false };
+      bubble.classList.add('dragging');
+      svg.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+
+    svg.addEventListener('pointermove', (ev)=>{
+      if(!dragState || ev.pointerId !== dragState.pointerId) return;
+      if(!dragState.moved && Math.hypot(ev.clientX - dragState.startX, ev.clientY - dragState.startY) > 6){
+        dragState.moved = true;
+      }
+      if(!dragState.moved) return;
+      const t = findTask(dragState.id);
+      if(!t) return;
+      const pt = svgPoint(svg, ev.clientX, ev.clientY);
+
+      if(dragState.mode === 'move'){
+        t.urgency = Math.round(unscaleX(pt.x));
+        t.importance = Math.round(unscaleY(pt.y));
+      } else {
+        const cx = scaleX(t.urgency), cy = scaleY(t.importance);
+        const dist = Math.hypot(pt.x - cx, pt.y - cy); // distance from center ≈ current radius
+        const c = 1 + (dist - R_MIN) / R_STEP;
+        t.complexity = Math.min(5, Math.max(1, Math.round(c)));
+      }
+      updateBubbleVisual(t);
+    });
+
+    const endDrag = (ev)=>{
+      if(!dragState || ev.pointerId !== dragState.pointerId) return;
+      const svgEl2 = document.getElementById('matrix-svg');
+      const bubble = svgEl2.querySelector(`[data-id="${dragState.id}"]`);
+      if(bubble) bubble.classList.remove('dragging');
+      const wasTap = !dragState.moved;
+      const id = dragState.id;
+      dragState = null;
+      if(wasTap){
+        openSheet(id);
+      } else {
+        persist();
+        renderMatrix();
+      }
     };
-  })();
+    svg.addEventListener('pointerup', endDrag);
+    svg.addEventListener('pointercancel', endDrag);
+  }
 
   /* ============ KANBAN VIEW ============ */
   let kanbanDrag = null;
@@ -673,9 +687,6 @@
       root.appendChild(col);
       const body = col.querySelector('.kcol-body');
       list.forEach(t=> body.appendChild(makeCard(t)));
-
-      body.addEventListener('pointerenter', ()=>{ if(kanbanDrag) body.classList.add('drop-hover'); });
-      body.addEventListener('pointerleave', ()=> body.classList.remove('drop-hover'));
     });
   }
 
@@ -688,7 +699,7 @@
     card.innerHTML = `
       <div class="card-top"><span class="card-cat">${cat.icon}</span><span class="card-title">${escapeHtml(t.title)}</span></div>
       <div class="card-meta">
-        <span class="tag ghost">U${t.urgency} · I${t.importance}</span>
+        <span class="tag ghost">U${Math.round(t.urgency)} · I${Math.round(t.importance)}</span>
         ${due ? `<span class="tag ${due.cls}">${due.text}</span>` : ''}
       </div>`;
     card.addEventListener('pointerdown', onCardPointerDown);
@@ -700,32 +711,54 @@
     const card = ev.currentTarget;
     card._dragged = false;
     const startX = ev.clientX, startY = ev.clientY;
-    kanbanDrag = { id: card.dataset.id, card };
+
+    // Placeholder matches the dragged card's own size — not the whole column.
+    const rect = card.getBoundingClientRect();
+    const placeholder = document.createElement('div');
+    placeholder.className = 'card-placeholder';
+    placeholder.style.height = rect.height + 'px';
+
+    kanbanDrag = { id: card.dataset.id, card, placeholder };
     card.setPointerCapture(ev.pointerId);
 
+    function positionPlaceholder(clientX, clientY){
+      const el = document.elementFromPoint(clientX, clientY);
+      const body = el && el.closest && el.closest('.kcol-body');
+      if(!body) return;
+      const siblings = Array.from(body.querySelectorAll('.card:not(.dragging)'));
+      let target = null;
+      for(const sib of siblings){
+        const r = sib.getBoundingClientRect();
+        if(clientY < r.top + r.height / 2){ target = sib; break; }
+      }
+      if(target) body.insertBefore(placeholder, target);
+      else body.appendChild(placeholder);
+    }
+
     function move(e){
-      if(Math.hypot(e.clientX-startX, e.clientY-startY) > 8){
+      if(!card._dragged && Math.hypot(e.clientX-startX, e.clientY-startY) > 8){
         card._dragged = true;
         card.classList.add('dragging');
+        card.parentElement.insertBefore(placeholder, card.nextSibling);
       }
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      document.querySelectorAll('.kcol-body').forEach(b=>b.classList.remove('drop-hover'));
-      const body = el && el.closest && el.closest('.kcol-body');
-      if(body) body.classList.add('drop-hover');
+      if(!card._dragged) return;
+      positionPlaceholder(e.clientX, e.clientY);
     }
     function up(e){
       card.classList.remove('dragging');
-      document.querySelectorAll('.kcol-body').forEach(b=>b.classList.remove('drop-hover'));
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const body = el && el.closest && el.closest('.kcol-body');
-      if(body && card._dragged){
-        const t = findTask(kanbanDrag.id);
-        if(t){ t.status = body.dataset.status; persist(); renderKanban(); }
+      if(card._dragged){
+        const body = placeholder.parentElement;
+        if(body && body.classList.contains('kcol-body')){
+          const t = findTask(kanbanDrag.id);
+          if(t){ t.status = body.dataset.status; persist(); }
+        }
       }
+      placeholder.remove();
       card.removeEventListener('pointermove', move);
       card.removeEventListener('pointerup', up);
       card.removeEventListener('pointercancel', up);
       kanbanDrag = null;
+      renderKanban();
     }
     card.addEventListener('pointermove', move);
     card.addEventListener('pointerup', up);
@@ -765,7 +798,7 @@
           <div class="list-title">${escapeHtml(t.title)}</div>
           <div class="list-sub">${STATUSES.find(s=>s.id===t.status).label}${due ? ' · '+due.text : ''}</div>
         </div>
-        <div class="list-score">score<b>${scoreOf(t)}</b></div>`;
+        <div class="list-score">score<b>${Math.round(scoreOf(t))}</b></div>`;
       row.addEventListener('click', ()=> openSheet(t.id));
       root.appendChild(row);
     });
@@ -877,12 +910,12 @@
 
   /* ============ EXPORT / IMPORT ============ */
   document.getElementById('btn-export').addEventListener('click', ()=>{
-    const data = { app:'chantier', version:'1.0', exportedAt:new Date().toISOString(), tasks };
+    const data = { app:'assistant', version:'1.0', exportedAt:new Date().toISOString(), tasks };
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chantier-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `assistant-backup-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
     toast('Export JSON téléchargé');
@@ -944,6 +977,7 @@
 
   window.addEventListener('resize', ()=>{ if(currentView==='matrix' && tasks.length) renderMatrix(); });
 
+  initMatrixDrag();
   renderAll();
 })();
 </script>
