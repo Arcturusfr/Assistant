@@ -259,12 +259,16 @@
 
   /* ---------- Wide layout (unfolded / tablet) ---------- */
   @media (min-width:760px){
-    .layout{flex-direction:row-reverse;}
     .nav{
-      order:0; flex-direction:column; width:88px; border-top:none; border-right:1px solid var(--border);
-      padding-top:18px; gap:4px; padding-bottom:0;
+      order:0; flex-direction:column; width:180px; border-top:none; border-right:1px solid var(--border);
+      padding:20px 10px; gap:2px;
     }
-    .nav-item{flex:0 0 auto; padding:12px 4px;}
+    .nav-item{
+      flex:0 0 auto; flex-direction:row; justify-content:flex-start; align-items:center;
+      gap:11px; padding:11px 12px; border-radius:11px; font-size:13.5px;
+    }
+    .nav-item .ic{font-size:18px;}
+    .nav-item.active{background:rgba(36,80,240,0.09);}
     main{order:1;}
     .fab{right:32px; bottom:32px;}
     .kanban{grid-template-columns:repeat(4,1fr);}
@@ -285,7 +289,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-name">Assistant</span>
-      <span class="version-badge">v1.0</span>
+      <span class="version-badge">v1.1</span>
     </div>
     <div class="topbar-actions">
       <button class="icon-btn" id="btn-export" title="Exporter en JSON">
@@ -430,11 +434,11 @@
 
   /* ============ CONFIG ============ */
   const CATEGORIES = {
-    achat:     { label:"Achat",     icon:"🛒", color:"var(--cat-achat)" },
-    admin:     { label:"Admin.",    icon:"📋", color:"var(--cat-admin)" },
-    travaux:   { label:"Travaux",   icon:"🔨", color:"var(--cat-travaux)" },
-    entretien: { label:"Entretien", icon:"🔧", color:"var(--cat-entretien)" },
-    autre:     { label:"Autre",     icon:"⭐", color:"var(--cat-autre)" }
+    achat:     { label:"Achat",     icon:"🛒", color:"var(--cat-achat)",     hex:"#2450F0" },
+    admin:     { label:"Admin.",    icon:"📋", color:"var(--cat-admin)",     hex:"#8B2FD1" },
+    travaux:   { label:"Travaux",   icon:"🔨", color:"var(--cat-travaux)",   hex:"#F0631E" },
+    entretien: { label:"Entretien", icon:"🔧", color:"var(--cat-entretien)", hex:"#0FA37F" },
+    autre:     { label:"Autre",     icon:"⭐", color:"var(--cat-autre)",     hex:"#64748B" }
   };
   const STATUSES = [
     { id:"todo",    label:"À faire" },
@@ -516,13 +520,110 @@
     return el;
   }
 
+  // Lighten (percent > 0) or darken (percent < 0) a hex color, e.g. shade('#2450F0', 0.3)
+  function shade(hex, percent){
+    const num = parseInt(hex.slice(1), 16);
+    let r = (num>>16)&255, g=(num>>8)&255, b=num&255;
+    const target = percent < 0 ? 0 : 255, p = Math.abs(percent);
+    r = Math.round((target-r)*p) + r;
+    g = Math.round((target-g)*p) + g;
+    b = Math.round((target-b)*p) + b;
+    return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }
+
+  // Reusable hidden <text> node for precise text-width measurement (font-aware, not estimated)
+  let measureEl = null;
+  function textWidth(svg, str, fontSize){
+    if(!measureEl){
+      measureEl = svgEl('text', {x:-9999, y:-9999, 'font-family':"'Inter', sans-serif", 'font-weight':600});
+      svg.appendChild(measureEl);
+    } else if(measureEl.parentNode !== svg){
+      svg.appendChild(measureEl);
+    }
+    measureEl.setAttribute('font-size', fontSize);
+    measureEl.textContent = str;
+    return measureEl.getComputedTextLength();
+  }
+
+  // Wrap a task title into 1-3 centered lines that fit the bubble's circle, truncating with "…" if needed
+  function wrapLabel(svg, title, r){
+    const fontSize = Math.max(9, Math.min(13, r*0.24));
+    const lineHeight = fontSize * 1.16;
+    const maxLines = r < 20 ? 1 : (r < 32 ? 2 : 3);
+    const words = title.split(/\s+/).filter(Boolean);
+    const lines = [];
+    let current = "";
+    let idx = 0;
+    const chordHalf = (lineIndex) => {
+      const dy = lineIndex * lineHeight;
+      return Math.sqrt(Math.max(r*r - dy*dy, (r*0.35)*(r*0.35))) * 0.86;
+    };
+    while(idx < words.length && lines.length < maxLines){
+      const word = words[idx];
+      const attempt = current ? current + " " + word : word;
+      if(textWidth(svg, attempt, fontSize) <= chordHalf(lines.length)*2 || !current){
+        current = attempt; idx++;
+      } else {
+        lines.push(current); current = "";
+      }
+    }
+    if(current) lines.push(current);
+    if(idx < words.length){
+      const li = lines.length - 1;
+      let last = lines[li] || "";
+      while(last.length > 1 && textWidth(svg, last+'…', fontSize) > chordHalf(li)*2){ last = last.slice(0, -1); }
+      lines[li] = last.replace(/[,.\s]+$/, '') + '…';
+    }
+    return { lines, fontSize, lineHeight };
+  }
+
+  // Exact duplicates (same urgency/importance/complexity) would otherwise render as one
+  // indistinguishable, unclickable stack — spread them evenly around the shared point.
+  function computeBubbleLayout(taskList){
+    const groups = {};
+    taskList.forEach(t=>{
+      const key = `${Math.round(t.urgency)}|${Math.round(t.importance)}|${Math.round(t.complexity)}`;
+      (groups[key] = groups[key] || []).push(t);
+    });
+    const layout = {};
+    Object.values(groups).forEach(group=>{
+      const baseCx = scaleX(group[0].urgency), baseCy = scaleY(group[0].importance), r = radiusFor(group[0].complexity);
+      if(group.length === 1){
+        layout[group[0].id] = { cx:baseCx, cy:baseCy, r };
+      } else {
+        const n = group.length;
+        const offsetR = r / Math.sin(Math.PI / n);
+        group.forEach((t, i)=>{
+          const angle = (i / n) * Math.PI * 2 - Math.PI/2;
+          layout[t.id] = { cx: baseCx + Math.cos(angle)*offsetR, cy: baseCy + Math.sin(angle)*offsetR, r };
+        });
+      }
+    });
+    return layout;
+  }
+
   let dragState = null; // {id, mode:'move'|'resize', pointerId}
 
   function renderMatrix(){
     const svg = document.getElementById('matrix-svg');
     svg.innerHTML = "";
+    measureEl = null; // was just wiped out along with the rest of the SVG
     svg.setAttribute('viewBox', `0 0 ${MX.size} ${MX.size}`);
     const mid = MX.pad + (MX.size - MX.pad*2)/2;
+
+    // Defs: one glossy radial gradient per category + a shared soft drop-shadow
+    const defs = svgEl('defs', {});
+    Object.entries(CATEGORIES).forEach(([k,c])=>{
+      const grad = svgEl('radialGradient', {id:`grad-${k}`, cx:'35%', cy:'26%', r:'80%'});
+      grad.appendChild(svgEl('stop', {offset:'0%', 'stop-color': shade(c.hex, 0.38)}));
+      grad.appendChild(svgEl('stop', {offset:'55%', 'stop-color': c.hex}));
+      grad.appendChild(svgEl('stop', {offset:'100%', 'stop-color': shade(c.hex, -0.2)}));
+      defs.appendChild(grad);
+    });
+    const filt = svgEl('filter', {id:'bubble-shadow', x:'-60%', y:'-60%', width:'220%', height:'220%'});
+    filt.appendChild(svgEl('feDropShadow', {dx:0, dy:2, stdDeviation:2.4, 'flood-color':'#12151C', 'flood-opacity':0.28}));
+    defs.appendChild(filt);
+    svg.appendChild(defs);
 
     // Quadrant backgrounds
     const half = (MX.size - MX.pad*2)/2;
@@ -555,16 +656,30 @@
 
     // Bubbles
     const visibleTasks = tasks.filter(t => t.status !== 'done');
+    const layout = computeBubbleLayout(visibleTasks);
     visibleTasks.forEach(t=>{
-      const cx = scaleX(t.urgency), cy = scaleY(t.importance), r = radiusFor(t.complexity);
+      const { cx, cy, r } = layout[t.id];
       const g = svgEl('g', {class:'bubble', 'data-id':t.id});
       const cat = CATEGORIES[t.category] || CATEGORIES.autre;
 
-      const circle = svgEl('circle', {cx, cy, r, fill:cat.color, opacity:0.88, stroke:'#fff', 'stroke-width':2, 'data-role':'main'});
+      const circle = svgEl('circle', {cx, cy, r, fill:`url(#grad-${t.category in CATEGORIES ? t.category : 'autre'})`, stroke:'#fff', 'stroke-width':1.5, filter:'url(#bubble-shadow)', 'data-role':'main'});
       g.appendChild(circle);
 
-      const icon = svgEl('text', {x:cx, y:cy+5, 'text-anchor':'middle', 'font-size':Math.max(12, r*0.7), style:'pointer-events:none;', 'data-role':'icon'});
-      icon.textContent = cat.icon; g.appendChild(icon);
+      // Glossy highlight, like light catching the top-left of a glass sphere
+      const shx = cx - r*0.32, shy = cy - r*0.38;
+      const shine = svgEl('ellipse', {cx:shx, cy:shy, rx:r*0.42, ry:r*0.24, fill:'#fff', opacity:0.4, transform:`rotate(-18 ${shx} ${shy})`, style:'pointer-events:none;', 'data-role':'shine'});
+      g.appendChild(shine);
+
+      // Task title inside the bubble instead of a category icon
+      const { lines, fontSize, lineHeight } = wrapLabel(svg, t.title, r);
+      const label = svgEl('text', {x:cx, 'text-anchor':'middle', 'font-size':fontSize, 'font-weight':700, fill:'#fff', style:'pointer-events:none; paint-order:stroke; stroke:rgba(18,21,28,0.32); stroke-width:2.5px; stroke-linejoin:round;', 'data-role':'label'});
+      const startY = cy - (lines.length-1)*lineHeight/2 + fontSize*0.35;
+      lines.forEach((line,i)=>{
+        const tspan = svgEl('tspan', {x:cx, y:startY + i*lineHeight});
+        tspan.textContent = line;
+        label.appendChild(tspan);
+      });
+      g.appendChild(label);
 
       // bigger invisible hit target for touch — needs a real (if 0-opacity) fill to be hit-testable
       const hit = svgEl('circle', {cx, cy, r:Math.max(r, 26), class:'bubble-hit', 'data-role':'hit'});
@@ -595,12 +710,29 @@
     if(!g) return;
     const cx = scaleX(t.urgency), cy = scaleY(t.importance), r = radiusFor(t.complexity);
     const main = g.querySelector('[data-role="main"]');
-    const icon = g.querySelector('[data-role="icon"]');
+    const shine = g.querySelector('[data-role="shine"]');
+    const label = g.querySelector('[data-role="label"]');
     const hit = g.querySelector('[data-role="hit"]');
     const handle = g.querySelector('[data-role="resize"]');
     const resizeHit = g.querySelector('[data-role="resize-hit"]');
+
     main.setAttribute('cx', cx); main.setAttribute('cy', cy); main.setAttribute('r', r);
-    icon.setAttribute('x', cx); icon.setAttribute('y', cy+5); icon.setAttribute('font-size', Math.max(12, r*0.7));
+
+    const shx = cx - r*0.32, shy = cy - r*0.38;
+    shine.setAttribute('cx', shx); shine.setAttribute('cy', shy);
+    shine.setAttribute('rx', r*0.42); shine.setAttribute('ry', r*0.24);
+    shine.setAttribute('transform', `rotate(-18 ${shx} ${shy})`);
+
+    const { lines, fontSize, lineHeight } = wrapLabel(svg, t.title, r);
+    label.setAttribute('font-size', fontSize);
+    label.innerHTML = '';
+    const startY = cy - (lines.length-1)*lineHeight/2 + fontSize*0.35;
+    lines.forEach((line,i)=>{
+      const tspan = svgEl('tspan', {x:cx, y:startY + i*lineHeight});
+      tspan.textContent = line;
+      label.appendChild(tspan);
+    });
+
     hit.setAttribute('cx', cx); hit.setAttribute('cy', cy); hit.setAttribute('r', Math.max(r, 26));
     const hx = cx + r*0.71, hy = cy + r*0.71;
     handle.setAttribute('cx', hx); handle.setAttribute('cy', hy);
@@ -644,7 +776,9 @@
         t.urgency = Math.round(unscaleX(pt.x));
         t.importance = Math.round(unscaleY(pt.y));
       } else {
-        const cx = scaleX(t.urgency), cy = scaleY(t.importance);
+        const main = svg.querySelector(`[data-id="${t.id}"] [data-role="main"]`);
+        const cx = main ? Number(main.getAttribute('cx')) : scaleX(t.urgency);
+        const cy = main ? Number(main.getAttribute('cy')) : scaleY(t.importance);
         const dist = Math.hypot(pt.x - cx, pt.y - cy); // distance from center ≈ current radius
         const c = 1 + (dist - R_MIN) / R_STEP;
         t.complexity = Math.min(5, Math.max(1, Math.round(c)));
