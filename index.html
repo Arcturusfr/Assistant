@@ -56,7 +56,7 @@
   button{font-family:inherit;}
 
   /* ---------- App shell ---------- */
-  #app{display:flex; flex-direction:column; height:100dvh; overflow:hidden;}
+  #app{display:flex; flex-direction:column; height:100vh; height:100dvh; height:var(--app-height, 100dvh); overflow:hidden;}
 
   .topbar{
     display:flex; align-items:center; gap:12px;
@@ -80,14 +80,14 @@
   }
   .icon-btn:active{background:var(--surface-2);}
 
-  .layout{flex:1; display:flex; min-height:0;}
+  .layout{flex:1; display:flex; flex-direction:column; min-height:0;}
 
   /* ---------- Nav (mobile bottom / desktop rail) ---------- */
   .nav{
     display:flex; flex:0 0 auto;
     background:var(--surface); border-top:1px solid var(--border);
     order:2;
-    padding-bottom:var(--safe-bottom);
+    padding-bottom:max(var(--safe-bottom), 10px);
   }
   .nav-item{
     flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
@@ -241,6 +241,33 @@
   }
   .status-opt.sel{background:var(--ink); color:#fff; border-color:var(--ink);}
 
+  .dep-picker{
+    max-height:220px; overflow-y:auto; border:1.5px solid var(--border); border-radius:11px;
+    background:var(--surface);
+  }
+  .dep-row{
+    display:flex; align-items:center; gap:9px; padding:10px 12px; cursor:pointer;
+    border-bottom:1px solid var(--border);
+  }
+  .dep-row:last-child{border-bottom:none;}
+  .dep-row.disabled{opacity:0.4; cursor:not-allowed;}
+  .dep-check{
+    width:20px; height:20px; border-radius:6px; border:1.5px solid var(--border); flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff;
+  }
+  .dep-row.checked .dep-check{background:var(--brand); border-color:var(--brand);}
+  .dep-cat{font-size:14px; flex:0 0 auto;}
+  .dep-title{font-size:13.5px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dep-done-tag{font-size:10px; font-weight:700; color:var(--ok); flex:0 0 auto;}
+  .dep-empty{padding:16px 12px; text-align:center; font-size:12.5px; color:var(--ink-3);}
+  .dep-banner{
+    display:flex; align-items:flex-start; gap:9px; background:rgba(240,99,30,0.09); border:1px solid rgba(240,99,30,0.3);
+    border-radius:12px; padding:11px 13px; font-size:12.5px; color:var(--ink); line-height:1.4;
+  }
+  .dep-banner b{display:block; color:var(--warn); font-size:12px; margin-bottom:2px;}
+  .dep-banner .ic{font-size:15px; flex:0 0 auto;}
+  .lock-badge{font-size:10px;}
+
   .sheet-actions{display:flex; gap:10px; margin-top:6px;}
   .btn{flex:1; padding:13px; border-radius:12px; border:none; font-weight:700; font-size:14.5px; cursor:pointer;}
   .btn-primary{background:var(--brand); color:#fff;}
@@ -258,7 +285,8 @@
   #import-input{display:none;}
 
   /* ---------- Wide layout (unfolded / tablet) ---------- */
-  @media (min-width:760px){
+  @media (min-width:620px){
+    .layout{flex-direction:row;}
     .nav{
       order:0; flex-direction:column; width:180px; border-top:none; border-right:1px solid var(--border);
       padding:20px 10px; gap:2px;
@@ -390,6 +418,14 @@
       <div class="status-picker" id="f-status"></div>
     </div>
 
+    <div class="field" id="dep-pending-banner" style="display:none;"></div>
+
+    <div class="field">
+      <label>Dépend de (optionnel)</label>
+      <input type="text" id="f-dep-search" placeholder="Filtrer les tâches…" style="margin-bottom:8px;">
+      <div class="dep-picker" id="f-dependencies"></div>
+    </div>
+
     <div class="field">
       <label>Notes (optionnel)</label>
       <textarea id="f-notes" placeholder="Détails, contacts, références…"></textarea>
@@ -409,6 +445,26 @@
 <script>
 (function(){
   "use strict";
+
+  /* ============ VIEWPORT HEIGHT FIX (foldables / Samsung Internet) ============
+     Some Android/Samsung browser + One UI combinations miscalculate 100vh/100dvh
+     on orientation change (especially on foldables), silently clipping content
+     at the bottom — including the nav bar — with no visible scrollbar. Computing
+     the real height in JS and re-checking it periodically sidesteps that. */
+  function setAppHeight(){
+    document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+  }
+  setAppHeight();
+  window.addEventListener('resize', setAppHeight);
+  window.addEventListener('orientationchange', ()=>{
+    // Some devices report the new size a beat late after rotation completes
+    setTimeout(setAppHeight, 50);
+    setTimeout(setAppHeight, 300);
+    setTimeout(setAppHeight, 600);
+  });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', setAppHeight);
+  }
 
   /* ============ STORAGE (localStorage avec repli mémoire) ============ */
   const STORAGE_KEY = "assistant_v1_tasks";
@@ -451,6 +507,7 @@
 
   /* ============ STATE ============ */
   let tasks = storageGet() || [];
+  tasks.forEach(t=>{ if(!Array.isArray(t.dependsOn)) t.dependsOn = []; }); // migration douce des anciennes données
   let currentView = "matrix";
   let editingId = null; // null = création
   let listFilter = "all";
@@ -458,6 +515,28 @@
   function persist(){ storageSet(tasks); }
 
   function findTask(id){ return tasks.find(t => t.id === id); }
+
+  /* ============ DEPENDENCIES ============ */
+  // Tasks this task is still waiting on (excludes deps that were deleted or already done)
+  function unmetDependencies(t){
+    return (t.dependsOn || []).map(id=>findTask(id)).filter(dep=> dep && dep.status !== 'done');
+  }
+  function isBlockedByDeps(t){ return unmetDependencies(t).length > 0; }
+  // Would adding `candidateId` as a dependency of `taskId` create a cycle?
+  // (i.e. does candidateId already depend, directly or transitively, on taskId?)
+  function wouldCreateCycle(taskId, candidateId){
+    const seen = new Set();
+    const stack = [candidateId];
+    while(stack.length){
+      const cur = stack.pop();
+      if(cur === taskId) return true;
+      if(seen.has(cur)) continue;
+      seen.add(cur);
+      const curTask = findTask(cur);
+      if(curTask) (curTask.dependsOn||[]).forEach(d=> stack.push(d));
+    }
+    return false;
+  }
 
   /* ============ HELPERS ============ */
   function daysUntil(dateStr){
@@ -659,7 +738,8 @@
     const layout = computeBubbleLayout(visibleTasks);
     visibleTasks.forEach(t=>{
       const { cx, cy, r } = layout[t.id];
-      const g = svgEl('g', {class:'bubble', 'data-id':t.id});
+      const blocked = isBlockedByDeps(t);
+      const g = svgEl('g', {class:'bubble', 'data-id':t.id, opacity: blocked ? '0.55' : '1'});
       const cat = CATEGORIES[t.category] || CATEGORIES.autre;
 
       const circle = svgEl('circle', {cx, cy, r, fill:`url(#grad-${t.category in CATEGORIES ? t.category : 'autre'})`, stroke:'#fff', 'stroke-width':1.5, filter:'url(#bubble-shadow)', 'data-role':'main'});
@@ -680,6 +760,14 @@
         label.appendChild(tspan);
       });
       g.appendChild(label);
+
+      if(blocked){
+        const lx = cx - r*0.74, ly = cy - r*0.74;
+        const lockBg = svgEl('circle', {cx:lx, cy:ly, r:Math.max(8, r*0.24), fill:'#12151C', stroke:'#fff', 'stroke-width':1.5, style:'pointer-events:none;', 'data-role':'lock-bg'});
+        g.appendChild(lockBg);
+        const lockIcon = svgEl('text', {x:lx, y:ly+Math.max(8,r*0.24)*0.36, 'text-anchor':'middle', 'font-size':Math.max(9,r*0.26), style:'pointer-events:none;', 'data-role':'lock-icon'});
+        lockIcon.textContent = '🔒'; g.appendChild(lockIcon);
+      }
 
       // bigger invisible hit target for touch — needs a real (if 0-opacity) fill to be hit-testable
       const hit = svgEl('circle', {cx, cy, r:Math.max(r, 26), class:'bubble-hit', 'data-role':'hit'});
@@ -830,11 +918,13 @@
     card.className = 'card';
     card.dataset.id = t.id;
     const due = dueLabel(t.due);
+    const unmet = unmetDependencies(t);
     card.innerHTML = `
       <div class="card-top"><span class="card-cat">${cat.icon}</span><span class="card-title">${escapeHtml(t.title)}</span></div>
       <div class="card-meta">
         <span class="tag ghost">U${Math.round(t.urgency)} · I${Math.round(t.importance)}</span>
         ${due ? `<span class="tag ${due.cls}">${due.text}</span>` : ''}
+        ${unmet.length ? `<span class="tag due" title="${unmet.map(d=>escapeHtml(d.title)).join(', ')}"><span class="lock-badge">🔒</span> ${unmet.length}</span>` : ''}
       </div>`;
     card.addEventListener('pointerdown', onCardPointerDown);
     card.addEventListener('click', (e)=>{ if(!card._dragged) openSheet(t.id); });
@@ -924,13 +1014,14 @@
     list.forEach(t=>{
       const cat = CATEGORIES[t.category] || CATEGORIES.autre;
       const due = dueLabel(t.due);
+      const unmet = unmetDependencies(t);
       const row = document.createElement('div');
       row.className = 'list-row';
       row.innerHTML = `
         <span class="list-cat">${cat.icon}</span>
         <div class="list-main">
           <div class="list-title">${escapeHtml(t.title)}</div>
-          <div class="list-sub">${STATUSES.find(s=>s.id===t.status).label}${due ? ' · '+due.text : ''}</div>
+          <div class="list-sub">${STATUSES.find(s=>s.id===t.status).label}${due ? ' · '+due.text : ''}${unmet.length ? ` · 🔒 en attente de ${unmet.length}` : ''}</div>
         </div>
         <div class="list-score">score<b>${Math.round(scoreOf(t))}</b></div>`;
       row.addEventListener('click', ()=> openSheet(t.id));
@@ -952,6 +1043,9 @@
   const fDue = document.getElementById('f-due');
   const fStatus = document.getElementById('f-status');
   const fNotes = document.getElementById('f-notes');
+  const fDepSearch = document.getElementById('f-dep-search');
+  const fDependencies = document.getElementById('f-dependencies');
+  const depBanner = document.getElementById('dep-pending-banner');
 
   function buildCatPicker(selected){
     fCategory.innerHTML = Object.entries(CATEGORIES).map(([k,c])=>
@@ -979,6 +1073,54 @@
     });
   });
 
+  // Currently checked dependency ids while the sheet is open (kept separate from `tasks`
+  // until Enregistrer is pressed)
+  let selectedDeps = [];
+
+  function buildDepPicker(currentId, filterText){
+    const q = (filterText || '').trim().toLowerCase();
+    const candidates = tasks.filter(t=>{
+      if(currentId && t.id === currentId) return false; // can't depend on itself
+      if(q && !t.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    if(candidates.length === 0){
+      fDependencies.innerHTML = `<div class="dep-empty">Aucune tâche${q ? ' ne correspond' : ' disponible'}</div>`;
+      return;
+    }
+    fDependencies.innerHTML = candidates.map(t=>{
+      const cat = CATEGORIES[t.category] || CATEGORIES.autre;
+      const checked = selectedDeps.includes(t.id);
+      const cyclic = currentId ? wouldCreateCycle(currentId, t.id) : false;
+      return `<div class="dep-row ${checked?'checked':''} ${cyclic?'disabled':''}" data-id="${t.id}" ${cyclic?'title="Créerait une dépendance circulaire"':''}>
+        <span class="dep-check">${checked?'✓':''}</span>
+        <span class="dep-cat">${cat.icon}</span>
+        <span class="dep-title">${escapeHtml(t.title)}</span>
+        ${t.status==='done' ? '<span class="dep-done-tag">Fait</span>' : ''}
+      </div>`;
+    }).join('');
+    fDependencies.querySelectorAll('.dep-row:not(.disabled)').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const id = row.dataset.id;
+        if(selectedDeps.includes(id)) selectedDeps = selectedDeps.filter(d=>d!==id);
+        else selectedDeps.push(id);
+        buildDepPicker(currentId, fDepSearch.value);
+      });
+    });
+  }
+  fDepSearch.addEventListener('input', ()=> buildDepPicker(editingId, fDepSearch.value));
+
+  function renderDepBanner(t){
+    if(!t){ depBanner.style.display = 'none'; return; }
+    const unmet = unmetDependencies(t);
+    if(unmet.length === 0){ depBanner.style.display = 'none'; return; }
+    depBanner.style.display = 'block';
+    depBanner.innerHTML = `<div class="dep-banner"><span class="ic">🔒</span><div>
+      <b>En attente de ${unmet.length} tâche${unmet.length>1?'s':''}</b>
+      ${unmet.map(d=>escapeHtml(d.title)).join(' · ')}
+    </div></div>`;
+  }
+
   function openSheet(id){
     editingId = id || null;
     const t = id ? findTask(id) : null;
@@ -993,6 +1135,11 @@
     fDue.value = t && t.due ? t.due : '';
     buildStatusPicker(t ? t.status : 'todo');
     fNotes.value = t ? (t.notes||'') : '';
+
+    selectedDeps = t ? (t.dependsOn || []).slice() : [];
+    fDepSearch.value = '';
+    buildDepPicker(editingId, '');
+    renderDepBanner(t);
 
     backdrop.classList.add('open');
     setTimeout(()=> fTitle.focus(), 50);
@@ -1011,31 +1158,45 @@
     if(!title){ toast('Ajoutez un titre'); fTitle.focus(); return; }
     const cat = fCategory.querySelector('.cat-opt.sel')?.dataset.cat || 'achat';
     const status = fStatus.querySelector('.status-opt.sel')?.dataset.status || 'todo';
+    const dependsOn = selectedDeps.slice();
 
+    let savedTask;
     if(editingId){
       const t = findTask(editingId);
       Object.assign(t, {
         title, category:cat,
         urgency:Number(fUrgency.value), importance:Number(fImportance.value), complexity:Number(fComplexity.value),
-        due: fDue.value || null, status, notes: fNotes.value.trim()
+        due: fDue.value || null, status, notes: fNotes.value.trim(), dependsOn
       });
+      savedTask = t;
     } else {
-      tasks.push({
+      savedTask = {
         id: uid(), title, category:cat,
         urgency:Number(fUrgency.value), importance:Number(fImportance.value), complexity:Number(fComplexity.value),
-        due: fDue.value || null, status, notes: fNotes.value.trim(),
+        due: fDue.value || null, status, notes: fNotes.value.trim(), dependsOn,
         createdAt: new Date().toISOString()
-      });
+      };
+      tasks.push(savedTask);
     }
     persist();
     closeSheet();
     renderAll();
-    toast('Enregistré');
+    if(status === 'done' && isBlockedByDeps(savedTask)){
+      toast('Enregistré — attention, des dépendances ne sont pas encore terminées');
+    } else {
+      toast('Enregistré');
+    }
   });
 
   document.getElementById('btn-delete').addEventListener('click', ()=>{
     if(!editingId) return;
     tasks = tasks.filter(t=>t.id !== editingId);
+    // Clean up: no other task should keep pointing at a dependency that no longer exists
+    tasks.forEach(t=>{
+      if(t.dependsOn && t.dependsOn.includes(editingId)){
+        t.dependsOn = t.dependsOn.filter(id=>id!==editingId);
+      }
+    });
     persist();
     closeSheet();
     renderAll();
