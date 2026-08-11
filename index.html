@@ -268,6 +268,31 @@
   .dep-banner .ic{font-size:15px; flex:0 0 auto;}
   .lock-badge{font-size:10px;}
 
+  .drill-banner{
+    display:flex; align-items:center; gap:10px; padding:10px 16px;
+    background:rgba(36,80,240,0.07); border-bottom:1px solid var(--border); flex:0 0 auto;
+  }
+  .drill-back{
+    border:none; background:var(--surface); color:var(--brand); font-weight:700; font-size:12.5px;
+    padding:7px 12px; border-radius:100px; cursor:pointer; flex:0 0 auto; box-shadow:var(--shadow-1);
+  }
+  .drill-label{font-size:13px; font-weight:600; color:var(--brand-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  .subtasks-box{border:1.5px solid var(--border); border-radius:11px; overflow:hidden;}
+  .subtasks-row{
+    display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px;
+  }
+  .subtasks-row:last-child{border-bottom:none;}
+  .subtasks-hint{padding:12px; font-size:12.5px; color:var(--ink-2); line-height:1.4;}
+  .subtasks-open-btn{
+    width:100%; padding:12px; border:none; background:var(--surface-2); color:var(--ink);
+    font-weight:700; font-size:13.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .subtask-count-badge{
+    font-size:10.5px; font-weight:700; color:var(--brand-ink); background:rgba(36,80,240,0.1);
+    padding:2px 8px; border-radius:100px;
+  }
+
   .sheet-actions{display:flex; gap:10px; margin-top:6px;}
   .btn{flex:1; padding:13px; border-radius:12px; border:none; font-weight:700; font-size:14.5px; cursor:pointer;}
   .btn-primary{background:var(--brand); color:#fff;}
@@ -328,6 +353,11 @@
       </button>
     </div>
   </header>
+
+  <div class="drill-banner" id="drill-banner" style="display:none;">
+    <button class="drill-back" id="drill-back">← Retour</button>
+    <span class="drill-label" id="drill-label"></span>
+  </div>
 
   <div class="layout">
     <nav class="nav">
@@ -426,6 +456,11 @@
       <div class="dep-picker" id="f-dependencies"></div>
     </div>
 
+    <div class="field" id="subtasks-field" style="display:none;">
+      <label>Sous-tâches</label>
+      <div class="subtasks-box" id="subtasks-box"></div>
+    </div>
+
     <div class="field">
       <label>Notes (optionnel)</label>
       <textarea id="f-notes" placeholder="Détails, contacts, références…"></textarea>
@@ -507,14 +542,50 @@
 
   /* ============ STATE ============ */
   let tasks = storageGet() || [];
-  tasks.forEach(t=>{ if(!Array.isArray(t.dependsOn)) t.dependsOn = []; }); // migration douce des anciennes données
+  tasks.forEach(t=>{
+    if(!Array.isArray(t.dependsOn)) t.dependsOn = []; // migration douce des anciennes données
+    if(t.parentId === undefined) t.parentId = null;
+  });
   let currentView = "matrix";
   let editingId = null; // null = création
   let listFilter = "all";
+  let activeParentId = null; // null = vues principales ; sinon on est "zoomé" sur les sous-tâches de cette tâche
 
   function persist(){ storageSet(tasks); }
 
   function findTask(id){ return tasks.find(t => t.id === id); }
+
+  /* ============ SUBTASKS ============ */
+  // Tasks visible in the current scope: top-level tasks normally, or the subtasks of
+  // activeParentId when "zoomed" into a global task.
+  function scopedTasks(){
+    return tasks.filter(t => (t.parentId || null) === activeParentId);
+  }
+  function subtaskCount(taskId){
+    return tasks.filter(t => t.parentId === taskId).length;
+  }
+  function subtaskDoneCount(taskId){
+    return tasks.filter(t => t.parentId === taskId && t.status === 'done').length;
+  }
+  function enterSubtasks(parentId){
+    activeParentId = parentId;
+    renderAll();
+  }
+  function exitSubtasks(){
+    activeParentId = null;
+    renderAll();
+  }
+  function updateDrillBanner(){
+    const banner = document.getElementById('drill-banner');
+    const label = document.getElementById('drill-label');
+    if(activeParentId){
+      const parent = findTask(activeParentId);
+      banner.style.display = 'flex';
+      label.textContent = parent ? `Sous-tâches de : ${parent.title}` : 'Sous-tâches';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
 
   /* ============ DEPENDENCIES ============ */
   // Tasks this task is still waiting on (excludes deps that were deleted or already done)
@@ -734,7 +805,7 @@
     ax2.textContent = 'Importance →'; svg.appendChild(ax2);
 
     // Bubbles
-    const visibleTasks = tasks.filter(t => t.status !== 'done');
+    const visibleTasks = scopedTasks().filter(t => t.status !== 'done');
     const layout = computeBubbleLayout(visibleTasks);
     visibleTasks.forEach(t=>{
       const { cx, cy, r } = layout[t.id];
@@ -767,6 +838,16 @@
         g.appendChild(lockBg);
         const lockIcon = svgEl('text', {x:lx, y:ly+Math.max(8,r*0.24)*0.36, 'text-anchor':'middle', 'font-size':Math.max(9,r*0.26), style:'pointer-events:none;', 'data-role':'lock-icon'});
         lockIcon.textContent = '🔒'; g.appendChild(lockIcon);
+      }
+
+      const subCount = subtaskCount(t.id);
+      if(subCount > 0){
+        const sx = cx + r*0.74, sy = cy - r*0.74;
+        const sr = Math.max(9, r*0.26);
+        const subBg = svgEl('circle', {cx:sx, cy:sy, r:sr, fill:'#fff', stroke:CATEGORIES[t.category] ? CATEGORIES[t.category].hex : '#64748B', 'stroke-width':1.5, style:'pointer-events:none;', 'data-role':'sub-bg'});
+        g.appendChild(subBg);
+        const subLabel = svgEl('text', {x:sx, y:sy+sr*0.35, 'text-anchor':'middle', 'font-size':Math.max(8,r*0.22), 'font-weight':700, fill:'#12151C', style:'pointer-events:none;', 'data-role':'sub-label'});
+        subLabel.textContent = String(subCount); g.appendChild(subLabel);
       }
 
       // bigger invisible hit target for touch — needs a real (if 0-opacity) fill to be hit-testable
@@ -903,7 +984,7 @@
       const col = document.createElement('div');
       col.className = 'kcol';
       col.dataset.status = s.id;
-      const list = tasks.filter(t=>t.status === s.id).sort((a,b)=> scoreOf(b)-scoreOf(a));
+      const list = scopedTasks().filter(t=>t.status === s.id).sort((a,b)=> scoreOf(b)-scoreOf(a));
       col.innerHTML = `<div class="kcol-head"><span class="kcol-title">${s.label}</span><span class="kcol-count">${list.length}</span></div>
                         <div class="kcol-body" data-status="${s.id}"></div>`;
       root.appendChild(col);
@@ -919,12 +1000,14 @@
     card.dataset.id = t.id;
     const due = dueLabel(t.due);
     const unmet = unmetDependencies(t);
+    const subCount = subtaskCount(t.id);
     card.innerHTML = `
       <div class="card-top"><span class="card-cat">${cat.icon}</span><span class="card-title">${escapeHtml(t.title)}</span></div>
       <div class="card-meta">
         <span class="tag ghost">U${Math.round(t.urgency)} · I${Math.round(t.importance)}</span>
         ${due ? `<span class="tag ${due.cls}">${due.text}</span>` : ''}
         ${unmet.length ? `<span class="tag due" title="${unmet.map(d=>escapeHtml(d.title)).join(', ')}"><span class="lock-badge">🔒</span> ${unmet.length}</span>` : ''}
+        ${subCount ? `<span class="tag ghost">📁 ${subtaskDoneCount(t.id)}/${subCount}</span>` : ''}
       </div>`;
     card.addEventListener('pointerdown', onCardPointerDown);
     card.addEventListener('click', (e)=>{ if(!card._dragged) openSheet(t.id); });
@@ -1001,13 +1084,14 @@
 
   function renderList(){
     const root = document.getElementById('list-root');
-    let list = tasks.slice();
+    let list = scopedTasks();
     if(listFilter !== 'all') list = list.filter(t=>t.category===listFilter);
     list.sort((a,b)=> scoreOf(b)-scoreOf(a));
     document.getElementById('list-count-sub').textContent = `${list.length} tâche${list.length>1?'s':''}`;
 
     if(list.length === 0){
-      root.innerHTML = `<div class="empty-state"><span class="ic">🗂️</span><strong>Rien ici</strong><span>Ajoutez une tâche avec le bouton +</span></div>`;
+      const msg = activeParentId ? 'Ajoutez une sous-tâche avec le bouton +' : 'Ajoutez une tâche avec le bouton +';
+      root.innerHTML = `<div class="empty-state"><span class="ic">🗂️</span><strong>Rien ici</strong><span>${msg}</span></div>`;
       return;
     }
     root.innerHTML = "";
@@ -1015,13 +1099,14 @@
       const cat = CATEGORIES[t.category] || CATEGORIES.autre;
       const due = dueLabel(t.due);
       const unmet = unmetDependencies(t);
+      const subCount = subtaskCount(t.id);
       const row = document.createElement('div');
       row.className = 'list-row';
       row.innerHTML = `
         <span class="list-cat">${cat.icon}</span>
         <div class="list-main">
           <div class="list-title">${escapeHtml(t.title)}</div>
-          <div class="list-sub">${STATUSES.find(s=>s.id===t.status).label}${due ? ' · '+due.text : ''}${unmet.length ? ` · 🔒 en attente de ${unmet.length}` : ''}</div>
+          <div class="list-sub">${STATUSES.find(s=>s.id===t.status).label}${due ? ' · '+due.text : ''}${unmet.length ? ` · 🔒 en attente de ${unmet.length}` : ''}${subCount ? ` · 📁 ${subtaskDoneCount(t.id)}/${subCount} sous-tâches` : ''}</div>
         </div>
         <div class="list-score">score<b>${Math.round(scoreOf(t))}</b></div>`;
       row.addEventListener('click', ()=> openSheet(t.id));
@@ -1076,11 +1161,13 @@
   // Currently checked dependency ids while the sheet is open (kept separate from `tasks`
   // until Enregistrer is pressed)
   let selectedDeps = [];
+  let currentDepScope = null;
 
-  function buildDepPicker(currentId, filterText){
+  function buildDepPicker(currentId, filterText, scopeParentId){
     const q = (filterText || '').trim().toLowerCase();
     const candidates = tasks.filter(t=>{
       if(currentId && t.id === currentId) return false; // can't depend on itself
+      if((t.parentId || null) !== scopeParentId) return false; // only siblings at the same level
       if(q && !t.title.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -1104,11 +1191,10 @@
         const id = row.dataset.id;
         if(selectedDeps.includes(id)) selectedDeps = selectedDeps.filter(d=>d!==id);
         else selectedDeps.push(id);
-        buildDepPicker(currentId, fDepSearch.value);
+        buildDepPicker(currentId, fDepSearch.value, scopeParentId);
       });
     });
   }
-  fDepSearch.addEventListener('input', ()=> buildDepPicker(editingId, fDepSearch.value));
 
   function renderDepBanner(t){
     if(!t){ depBanner.style.display = 'none'; return; }
@@ -1121,10 +1207,30 @@
     </div></div>`;
   }
 
+  // The "Sous-tâches" block only applies to top-level tasks — a subtask can't itself
+  // have subtasks. For a brand-new task it also needs to be saved first (it needs an id).
+  function updateSubtasksField(t){
+    const field = document.getElementById('subtasks-field');
+    const box = document.getElementById('subtasks-box');
+    const isTopLevelContext = t ? !t.parentId : (activeParentId === null);
+    if(!isTopLevelContext){ field.style.display = 'none'; return; }
+    field.style.display = 'block';
+    if(!t){
+      box.innerHTML = `<div class="subtasks-hint">Enregistrez d'abord la tâche pour pouvoir lui ajouter des sous-tâches.</div>`;
+      return;
+    }
+    const count = subtaskCount(t.id), done = subtaskDoneCount(t.id);
+    box.innerHTML = `<button type="button" class="subtasks-open-btn" id="subtasks-open-btn">📁 ${count ? `${done}/${count} sous-tâche${count>1?'s':''}` : 'Ajouter des sous-tâches'} →</button>`;
+    document.getElementById('subtasks-open-btn').addEventListener('click', ()=>{
+      closeSheet();
+      enterSubtasks(t.id);
+    });
+  }
+
   function openSheet(id){
     editingId = id || null;
     const t = id ? findTask(id) : null;
-    document.getElementById('sheet-title').textContent = t ? 'Modifier la tâche' : 'Nouvelle tâche';
+    document.getElementById('sheet-title').textContent = t ? 'Modifier la tâche' : (activeParentId ? 'Nouvelle sous-tâche' : 'Nouvelle tâche');
     document.getElementById('btn-delete').style.display = t ? 'block' : 'none';
 
     fTitle.value = t ? t.title : '';
@@ -1136,14 +1242,18 @@
     buildStatusPicker(t ? t.status : 'todo');
     fNotes.value = t ? (t.notes||'') : '';
 
+    const depScope = t ? (t.parentId || null) : activeParentId;
+    currentDepScope = depScope;
     selectedDeps = t ? (t.dependsOn || []).slice() : [];
     fDepSearch.value = '';
-    buildDepPicker(editingId, '');
+    buildDepPicker(editingId, '', depScope);
     renderDepBanner(t);
+    updateSubtasksField(t);
 
     backdrop.classList.add('open');
     setTimeout(()=> fTitle.focus(), 50);
   }
+  fDepSearch.addEventListener('input', ()=> buildDepPicker(editingId, fDepSearch.value, currentDepScope));
   function closeSheet(){
     backdrop.classList.remove('open');
     editingId = null;
@@ -1174,7 +1284,7 @@
         id: uid(), title, category:cat,
         urgency:Number(fUrgency.value), importance:Number(fImportance.value), complexity:Number(fComplexity.value),
         due: fDue.value || null, status, notes: fNotes.value.trim(), dependsOn,
-        createdAt: new Date().toISOString()
+        parentId: activeParentId, createdAt: new Date().toISOString()
       };
       tasks.push(savedTask);
     }
@@ -1190,17 +1300,17 @@
 
   document.getElementById('btn-delete').addEventListener('click', ()=>{
     if(!editingId) return;
-    tasks = tasks.filter(t=>t.id !== editingId);
+    // Deleting a global task takes its subtasks down with it
+    const idsToDelete = new Set([editingId, ...tasks.filter(t=>t.parentId===editingId).map(t=>t.id)]);
+    tasks = tasks.filter(t=>!idsToDelete.has(t.id));
     // Clean up: no other task should keep pointing at a dependency that no longer exists
     tasks.forEach(t=>{
-      if(t.dependsOn && t.dependsOn.includes(editingId)){
-        t.dependsOn = t.dependsOn.filter(id=>id!==editingId);
-      }
+      if(t.dependsOn) t.dependsOn = t.dependsOn.filter(id=>!idsToDelete.has(id));
     });
     persist();
     closeSheet();
     renderAll();
-    toast('Tâche supprimée');
+    toast(idsToDelete.size > 1 ? 'Tâche et ses sous-tâches supprimées' : 'Tâche supprimée');
   });
 
   /* ============ EXPORT / IMPORT ============ */
@@ -1243,15 +1353,18 @@
   function maybeShowEmptyMatrix(){
     const wrap = document.querySelector('#view-matrix .matrix-wrap');
     let empty = document.getElementById('matrix-empty');
-    if(tasks.length === 0){
+    const count = scopedTasks().length;
+    if(count === 0){
+      const title = activeParentId ? "Aucune sous-tâche pour l'instant" : "Aucune tâche pour l'instant";
+      const sub = activeParentId ? "Ajoutez-en une pour la voir apparaître sur la matrice" : "Ajoutez-en une pour la voir apparaître sur la matrice";
       if(!empty){
         empty = document.createElement('div');
         empty.id = 'matrix-empty';
         empty.className = 'empty-state';
-        empty.innerHTML = `<span class="ic">🧭</span><strong>Aucune tâche pour l'instant</strong><span>Ajoutez-en une pour la voir apparaître sur la matrice</span><button class="empty-cta" id="empty-add-btn">Ajouter une tâche</button>`;
         document.getElementById('view-matrix').appendChild(empty);
-        document.getElementById('empty-add-btn').addEventListener('click', ()=> openSheet(null));
       }
+      empty.innerHTML = `<span class="ic">🧭</span><strong>${title}</strong><span>${sub}</span><button class="empty-cta" id="empty-add-btn">${activeParentId ? 'Ajouter une sous-tâche' : 'Ajouter une tâche'}</button>`;
+      document.getElementById('empty-add-btn').addEventListener('click', ()=> openSheet(null));
       wrap.style.display = 'none';
       document.getElementById('matrix-legend').style.display = 'none';
     } else {
@@ -1261,16 +1374,19 @@
     }
   }
 
+  document.getElementById('drill-back').addEventListener('click', exitSubtasks);
+
   /* ============ MAIN RENDER ============ */
   function renderAll(){
+    updateDrillBanner();
     maybeShowEmptyMatrix();
-    if(tasks.length){ renderMatrix(); }
+    if(scopedTasks().length){ renderMatrix(); }
     renderKanban();
     renderListFilters();
     renderList();
   }
 
-  window.addEventListener('resize', ()=>{ if(currentView==='matrix' && tasks.length) renderMatrix(); });
+  window.addEventListener('resize', ()=>{ if(currentView==='matrix' && scopedTasks().length) renderMatrix(); });
 
   initMatrixDrag();
   renderAll();
