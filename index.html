@@ -146,7 +146,7 @@
   .bubble.dragging{cursor:grabbing;}
   .bubble-hit{fill:#000; opacity:0;}
   .resize-hit{fill:#000; opacity:0;}
-  .quad-label{font-family:var(--font-body); font-size:11.5px; font-weight:700; letter-spacing:0.03em; fill:var(--ink-2); text-transform:uppercase;}
+  .quad-label{font-family:var(--font-body); font-size:11.5px; font-weight:700; letter-spacing:0.03em; fill:var(--ink-2); text-transform:uppercase; paint-order:stroke; stroke:#fff; stroke-width:4px; stroke-linejoin:round;}
   .axis-label{font-family:var(--font-body); font-size:14px; font-weight:700; fill:var(--ink);}
   .resize-handle{fill:var(--surface); stroke:var(--ink); stroke-width:2; cursor:nwse-resize;}
 
@@ -645,7 +645,7 @@
 
   /* ============ MATRIX VIEW ============ */
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const MX = { size:460, pad:64 };
+  const MX = { size:460, pad:34 };
 
   function scaleX(u){ // urgency 1..5 -> px
     return MX.pad + (u-1)/4 * (MX.size - MX.pad*2);
@@ -727,6 +727,17 @@
     return { lines, fontSize, lineHeight };
   }
 
+  // Keeps a bubble's full circle inside the canvas regardless of how small the outer
+  // margin is — used instead of a big fixed padding, so the margin can stay tight while
+  // still guaranteeing large bubbles near the edges never get visually clipped.
+  function clampToCanvas(cx, cy, r){
+    const margin = 4;
+    return {
+      cx: Math.min(Math.max(cx, r+margin), MX.size - r - margin),
+      cy: Math.min(Math.max(cy, r+margin), MX.size - r - margin)
+    };
+  }
+
   // Exact duplicates (same urgency/importance/complexity) would otherwise render as one
   // indistinguishable, unclickable stack — spread them evenly around the shared point.
   function computeBubbleLayout(taskList){
@@ -739,13 +750,15 @@
     Object.values(groups).forEach(group=>{
       const baseCx = scaleX(group[0].urgency), baseCy = scaleY(group[0].importance), r = radiusFor(group[0].complexity);
       if(group.length === 1){
-        layout[group[0].id] = { cx:baseCx, cy:baseCy, r };
+        const p = clampToCanvas(baseCx, baseCy, r);
+        layout[group[0].id] = { cx:p.cx, cy:p.cy, r };
       } else {
         const n = group.length;
         const offsetR = r / Math.sin(Math.PI / n);
         group.forEach((t, i)=>{
           const angle = (i / n) * Math.PI * 2 - Math.PI/2;
-          layout[t.id] = { cx: baseCx + Math.cos(angle)*offsetR, cy: baseCy + Math.sin(angle)*offsetR, r };
+          const p = clampToCanvas(baseCx + Math.cos(angle)*offsetR, baseCy + Math.sin(angle)*offsetR, r);
+          layout[t.id] = { cx:p.cx, cy:p.cy, r };
         });
       }
     });
@@ -788,18 +801,14 @@
     svg.appendChild(svgEl('line', {x1:mid, y1:MX.pad, x2:mid, y2:MX.size-MX.pad, stroke:'var(--border)', 'stroke-width':1, 'stroke-dasharray':'3,3'}));
     svg.appendChild(svgEl('line', {x1:MX.pad, y1:mid, x2:MX.size-MX.pad, y2:mid, stroke:'var(--border)', 'stroke-width':1, 'stroke-dasharray':'3,3'}));
 
-    // Quadrant labels
+    // Quadrant labels (drawn after the bubbles below, so they stay readable on top)
     const qlabel = (x,y,anchor,text) => {
       const t = svgEl('text', {x, y, 'text-anchor':anchor, class:'quad-label'});
       t.textContent = text; svg.appendChild(t);
     };
-    qlabel(mid+half-6, MX.pad+16, 'end', 'Faire maintenant');
-    qlabel(MX.pad+6, MX.pad+16, 'start', 'Planifier');
-    qlabel(mid+half-6, MX.size-MX.pad-8, 'end', 'Vite fait');
-    qlabel(MX.pad+6, MX.size-MX.pad-8, 'start', 'Plus tard');
 
     // Axis labels
-    const ax1 = svgEl('text', {x:MX.size/2, y:MX.size-8, 'text-anchor':'middle', class:'axis-label'});
+    const ax1 = svgEl('text', {x:MX.size/2, y:MX.size-6, 'text-anchor':'middle', class:'axis-label'});
     ax1.textContent = 'Urgence →'; svg.appendChild(ax1);
     const ax2 = svgEl('text', {x:14, y:MX.size/2, 'text-anchor':'middle', class:'axis-label', transform:`rotate(-90 14 ${MX.size/2})`});
     ax2.textContent = 'Importance →'; svg.appendChild(ax2);
@@ -864,6 +873,11 @@
       svg.appendChild(g);
     });
 
+    qlabel(mid+half-6, MX.pad-10, 'end', 'Faire maintenant');
+    qlabel(MX.pad+6, MX.pad-10, 'start', 'Planifier');
+    qlabel(mid+half-6, MX.size-MX.pad+15, 'end', 'Vite fait');
+    qlabel(MX.pad+6, MX.size-MX.pad+15, 'start', 'Plus tard');
+
     // Legend
     const legend = document.getElementById('matrix-legend');
     legend.innerHTML = Object.entries(CATEGORIES).map(([k,c])=>
@@ -877,7 +891,9 @@
     const svg = document.getElementById('matrix-svg');
     const g = svg.querySelector(`[data-id="${t.id}"]`);
     if(!g) return;
-    const cx = scaleX(t.urgency), cy = scaleY(t.importance), r = radiusFor(t.complexity);
+    const raw = { cx: scaleX(t.urgency), cy: scaleY(t.importance), r: radiusFor(t.complexity) };
+    const clamped = clampToCanvas(raw.cx, raw.cy, raw.r);
+    const cx = clamped.cx, cy = clamped.cy, r = raw.r;
     const main = g.querySelector('[data-role="main"]');
     const shine = g.querySelector('[data-role="shine"]');
     const label = g.querySelector('[data-role="label"]');
