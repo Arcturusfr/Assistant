@@ -146,12 +146,12 @@
   .bubble.dragging{cursor:grabbing;}
   .bubble-hit{fill:#000; opacity:0;}
   .resize-hit{fill:#000; opacity:0;}
-  .quad-label{font-family:var(--font-body); font-size:9.5px; font-weight:700; letter-spacing:0.04em; fill:var(--ink-3); text-transform:uppercase;}
-  .axis-label{font-family:var(--font-body); font-size:10.5px; font-weight:600; fill:var(--ink-2);}
+  .quad-label{font-family:var(--font-body); font-size:11.5px; font-weight:700; letter-spacing:0.03em; fill:var(--ink-2); text-transform:uppercase;}
+  .axis-label{font-family:var(--font-body); font-size:14px; font-weight:700; fill:var(--ink);}
   .resize-handle{fill:var(--surface); stroke:var(--ink); stroke-width:2; cursor:nwse-resize;}
 
   /* ---------- Kanban ---------- */
-  .kanban{display:grid; grid-template-columns:repeat(4,minmax(220px,1fr)); gap:12px; overflow-x:auto;}
+  .kanban{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;}
   .kcol{background:var(--surface-2); border-radius:var(--radius-m); padding:10px; min-height:120px; display:flex; flex-direction:column;}
   .kcol-head{display:flex; align-items:center; justify-content:space-between; padding:4px 4px 10px;}
   .kcol-title{font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-2);}
@@ -313,7 +313,7 @@
   @media (min-width:620px){
     .layout{flex-direction:row;}
     .nav{
-      order:0; flex-direction:column; width:180px; border-top:none; border-right:1px solid var(--border);
+      order:0; flex-direction:column; width:150px; border-top:none; border-right:1px solid var(--border);
       padding:20px 10px; gap:2px;
     }
     .nav-item{
@@ -324,15 +324,15 @@
     .nav-item.active{background:rgba(36,80,240,0.09);}
     main{order:1;}
     .fab{right:32px; bottom:32px;}
-    .kanban{grid-template-columns:repeat(4,1fr);}
     .sheet-backdrop{align-items:center;}
     .sheet{border-radius:20px; max-height:88dvh;}
     .view{padding:28px 32px 60px;}
-    .matrix-wrap{padding:22px 26px 10px; max-width:640px; margin:0 auto;}
+    .matrix-wrap{padding:26px 30px 14px; max-width:820px; margin:0 auto;}
   }
 
   @media (min-width:1080px){
     .view{max-width:1200px; margin:0 auto;}
+    .matrix-wrap{max-width:920px;}
   }
 </style>
 </head>
