@@ -1,0 +1,175 @@
+<!--
+  Assistant — index.html
+  Version : V002 — 2026-10-12 18:47 (heure de Paris)
+  Modifs  : Découpage de V01 en modules : CSS dans css/*.css, JS dans js/*.js
+            (scripts classiques chargés dans l'ordre, sans import — compatible
+            ouverture locale file:// dans QEdit). Badge de version V01 -> V002.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Assistant — suivi des choses à faire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/matrix.css">
+<link rel="stylesheet" href="css/kanban.css">
+<link rel="stylesheet" href="css/list.css">
+<link rel="stylesheet" href="css/sheet.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-name">Assistant</span>
+      <span class="version-badge">V002</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btn-export" title="Exporter en JSON">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-import" title="Importer un JSON">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 13l5-5 5 5"/><path d="M4 4h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="drill-banner" id="drill-banner" style="display:none;">
+    <button class="drill-back" id="drill-back">← Retour</button>
+    <span class="drill-label" id="drill-label"></span>
+  </div>
+
+  <div class="layout">
+    <nav class="nav">
+      <button class="nav-item active" data-view="matrix"><span class="ic">◱</span>Matrice</button>
+      <button class="nav-item" data-view="kanban"><span class="ic">▤</span>Kanban</button>
+      <button class="nav-item" data-view="list"><span class="ic">≣</span>Liste</button>
+    </nav>
+
+    <main>
+      <!-- MATRIX VIEW -->
+      <section class="view active" id="view-matrix">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Matrice de priorité</h1>
+            <p class="view-sub">Faites glisser une bulle pour changer urgence / importance. Tirez le coin pour la complexité.</p>
+          </div>
+        </div>
+        <div class="matrix-wrap">
+          <svg class="matrix-svg" id="matrix-svg" viewBox="0 0 460 460" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div class="matrix-legend" id="matrix-legend"></div>
+      </section>
+
+      <!-- KANBAN VIEW -->
+      <section class="view" id="view-kanban">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Suivi</h1>
+            <p class="view-sub">Glissez une carte vers une autre colonne pour changer son statut.</p>
+          </div>
+        </div>
+        <div class="kanban" id="kanban-root"></div>
+      </section>
+
+      <!-- LIST VIEW -->
+      <section class="view" id="view-list">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Tâches</h1>
+            <p class="view-sub" id="list-count-sub"></p>
+          </div>
+        </div>
+        <div class="chip-row" id="list-filters"></div>
+        <div id="list-root"></div>
+      </section>
+    </main>
+  </div>
+
+  <button class="fab" id="fab-add" title="Ajouter une tâche">+</button>
+</div>
+
+<!-- TASK SHEET -->
+<div class="sheet-backdrop" id="sheet-backdrop">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2 class="sheet-title" id="sheet-title">Nouvelle tâche</h2>
+
+    <div class="field">
+      <label>Titre</label>
+      <input type="text" id="f-title" placeholder="Ex. Renouveler la carte grise" maxlength="80">
+    </div>
+
+    <div class="field">
+      <label>Catégorie</label>
+      <div class="cat-picker" id="f-category"></div>
+    </div>
+
+    <div class="slider-row">
+      <div class="slider-top"><label>Urgence</label><span class="slider-val" id="f-urgency-val">3</span></div>
+      <input type="range" id="f-urgency" min="1" max="5" step="1" value="3">
+    </div>
+    <div class="slider-row">
+      <div class="slider-top"><label>Importance</label><span class="slider-val" id="f-importance-val">3</span></div>
+      <input type="range" id="f-importance" min="1" max="5" step="1" value="3">
+    </div>
+    <div class="slider-row">
+      <div class="slider-top"><label>Complexité</label><span class="slider-val" id="f-complexity-val">2</span></div>
+      <input type="range" id="f-complexity" min="1" max="5" step="1" value="2">
+    </div>
+
+    <div class="field">
+      <label>Échéance (optionnel)</label>
+      <input type="date" id="f-due">
+    </div>
+
+    <div class="field">
+      <label>Statut</label>
+      <div class="status-picker" id="f-status"></div>
+    </div>
+
+    <div class="field" id="dep-pending-banner" style="display:none;"></div>
+
+    <div class="field">
+      <label>Dépend de (optionnel)</label>
+      <input type="text" id="f-dep-search" placeholder="Filtrer les tâches…" style="margin-bottom:8px;">
+      <div class="dep-picker" id="f-dependencies"></div>
+    </div>
+
+    <div class="field" id="subtasks-field" style="display:none;">
+      <label>Sous-tâches</label>
+      <div class="subtasks-box" id="subtasks-box"></div>
+    </div>
+
+    <div class="field">
+      <label>Notes (optionnel)</label>
+      <textarea id="f-notes" placeholder="Détails, contacts, références…"></textarea>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-danger-ghost" id="btn-delete" style="display:none;">Supprimer</button>
+      <button class="btn btn-ghost" id="btn-cancel">Annuler</button>
+      <button class="btn btn-primary" id="btn-save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="import-input" accept="application/json">
+<div class="toast" id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/state.js"></script>
+<script src="js/helpers.js"></script>
+<script src="js/matrix.js"></script>
+<script src="js/kanban.js"></script>
+<script src="js/list.js"></script>
+<script src="js/sheet.js"></script>
+<script src="js/io.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
