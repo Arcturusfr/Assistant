@@ -1,0 +1,32 @@
+/* ==========================================================================
+   Assistant — css/kanban.css
+   Version : V002 — 2026-10-12 18:47 (heure de Paris)
+   Modifs  : Extrait de index.html (V01). Vue Kanban : colonnes, cartes, tags.
+   ========================================================================== */
+
+.kanban{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;}
+.kcol{background:var(--surface-2); border-radius:var(--radius-m); padding:10px; min-height:120px; display:flex; flex-direction:column;}
+.kcol-head{display:flex; align-items:center; justify-content:space-between; padding:4px 4px 10px;}
+.kcol-title{font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-2);}
+.kcol-count{font-size:11px; font-weight:700; background:var(--surface); border-radius:100px; padding:1px 7px; color:var(--ink-2);}
+.kcol-body{flex:1; display:flex; flex-direction:column; gap:8px; min-height:60px;}
+.card-placeholder{
+  border:2px dashed var(--brand); border-radius:var(--radius-s);
+  background:rgba(36,80,240,0.06); flex:0 0 auto;
+}
+
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-s);
+  padding:10px 11px; box-shadow:var(--shadow-1); cursor:grab; touch-action:none;
+}
+.card.dragging{opacity:0.4;}
+.card-top{display:flex; align-items:center; gap:6px; margin-bottom:5px;}
+.card-cat{font-size:14px;}
+.card-title{font-size:13.5px; font-weight:600; line-height:1.25; flex:1;}
+.card-meta{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;}
+.tag{font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:100px; color:#fff;}
+.tag.ghost{background:var(--surface-2); color:var(--ink-2);}
+.tag.due{background:var(--danger); color:#fff;}
+.tag.due.soon{background:var(--warn);}
+.tag.due.later{background:var(--surface-2); color:var(--ink-2);}
+.lock-badge{font-size:10px;}

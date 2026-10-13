@@ -1,0 +1,98 @@
+/* ==========================================================================
+   Assistant — css/layout.css
+   Version : V002 — 2026-10-12 18:47 (heure de Paris)
+   Modifs  : Extrait de index.html (V01). Structure générale : barre du haut,
+             navigation (bas mobile / rail large), bouton +, vues, bandeau
+             « sous-tâches », et variantes grand écran (dépliant / tablette).
+   ========================================================================== */
+
+#app{display:flex; flex-direction:column; height:100vh; height:100dvh; height:var(--app-height, 100dvh); overflow:hidden;}
+
+.topbar{
+  display:flex; align-items:center; gap:12px;
+  padding:calc(10px + var(--safe-top)) 16px 10px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex:0 0 auto;
+}
+.brand{display:flex; align-items:baseline; gap:8px; flex:1; min-width:0;}
+.brand-name{font-weight:700; font-size:19px; white-space:nowrap;}
+.version-badge{
+  font-family:var(--font-body); font-size:11px; font-weight:600;
+  color:var(--ink-3); background:var(--surface-2);
+  padding:2px 7px; border-radius:100px; white-space:nowrap;
+}
+.topbar-actions{display:flex; gap:8px; flex:0 0 auto;}
+.icon-btn{
+  width:38px; height:38px; border-radius:11px; border:1px solid var(--border);
+  background:var(--surface); color:var(--ink-2); display:flex; align-items:center; justify-content:center;
+  font-size:17px; cursor:pointer;
+}
+.icon-btn:active{background:var(--surface-2);}
+
+.layout{flex:1; display:flex; flex-direction:column; min-height:0;}
+
+/* ---------- Nav (mobile bas / desktop rail) ---------- */
+.nav{
+  display:flex; flex:0 0 auto;
+  background:var(--surface); border-top:1px solid var(--border);
+  order:2;
+  padding-bottom:max(var(--safe-bottom), 10px);
+}
+.nav-item{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:9px 4px 8px; border:none; background:none; color:var(--ink-3);
+  font-size:11px; font-weight:600; cursor:pointer;
+}
+.nav-item .ic{font-size:19px;}
+.nav-item.active{color:var(--brand);}
+
+.fab{
+  position:fixed; right:18px; bottom:calc(78px + var(--safe-bottom));
+  width:56px; height:56px; border-radius:18px; border:none;
+  background:var(--brand); color:#fff; font-size:28px; line-height:1;
+  box-shadow:var(--shadow-2); cursor:pointer; z-index:20;
+  display:flex; align-items:center; justify-content:center;
+}
+.fab:active{transform:scale(0.95);}
+
+main{flex:1; min-height:0; overflow:auto; order:1; -webkit-overflow-scrolling:touch;}
+.view{display:none; padding:16px; padding-bottom:100px; max-width:1200px; margin:0 auto; width:100%;}
+.view.active{display:block;}
+
+.view-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:10px;}
+.view-title{font-size:20px; font-weight:700; margin:0;}
+.view-sub{font-size:12.5px; color:var(--ink-2); margin:2px 0 0;}
+
+/* ---------- Bandeau « sous-tâches » ---------- */
+.drill-banner{
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
+  background:rgba(36,80,240,0.07); border-bottom:1px solid var(--border); flex:0 0 auto;
+}
+.drill-back{
+  border:none; background:var(--surface); color:var(--brand); font-weight:700; font-size:12.5px;
+  padding:7px 12px; border-radius:100px; cursor:pointer; flex:0 0 auto; box-shadow:var(--shadow-1);
+}
+.drill-label{font-size:13px; font-weight:600; color:var(--brand-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+/* ---------- Grand écran (dépliant / tablette) ---------- */
+@media (min-width:620px){
+  .layout{flex-direction:row;}
+  .nav{
+    order:0; flex-direction:column; width:150px; border-top:none; border-right:1px solid var(--border);
+    padding:20px 10px; gap:2px;
+  }
+  .nav-item{
+    flex:0 0 auto; flex-direction:row; justify-content:flex-start; align-items:center;
+    gap:11px; padding:11px 12px; border-radius:11px; font-size:13.5px;
+  }
+  .nav-item .ic{font-size:18px;}
+  .nav-item.active{background:rgba(36,80,240,0.09);}
+  main{order:1;}
+  .fab{right:32px; bottom:32px;}
+  .view{padding:28px 32px 60px;}
+}
+
+@media (min-width:1080px){
+  .view{max-width:1200px; margin:0 auto;}
+}

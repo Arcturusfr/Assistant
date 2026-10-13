@@ -1,0 +1,76 @@
+/* ==========================================================================
+   Assistant — css/base.css
+   Version : V002 — 2026-10-12 18:47 (heure de Paris)
+   Modifs  : Extrait de index.html (V01). Variables, reset, typographie,
+             états vides, toast. Polices de secours étendues (Roboto, Noto Sans).
+   ========================================================================== */
+
+:root{
+  --bg:#F4F5F8;
+  --surface:#FFFFFF;
+  --surface-2:#EDEFF4;
+  --ink:#12151C;
+  --ink-2:#5B6474;
+  --ink-3:#8991A3;
+  --border:#E2E5EB;
+  --brand:#2450F0;
+  --brand-ink:#0E2E9E;
+  --danger:#E1264A;
+  --ok:#0FA37F;
+  --warn:#F0631E;
+
+  --cat-achat:#2450F0;
+  --cat-admin:#8B2FD1;
+  --cat-travaux:#F0631E;
+  --cat-entretien:#0FA37F;
+  --cat-autre:#64748B;
+
+  --q1:rgba(225,38,74,0.10);   /* urgent+important */
+  --q2:rgba(36,80,240,0.08);   /* important, pas urgent */
+  --q3:rgba(240,180,20,0.14);  /* urgent, pas important */
+  --q4:rgba(100,116,139,0.08); /* ni l'un ni l'autre */
+
+  --radius-s:8px;
+  --radius-m:14px;
+  --radius-l:22px;
+  --shadow-1: 0 1px 2px rgba(18,21,28,0.06), 0 1px 1px rgba(18,21,28,0.04);
+  --shadow-2: 0 8px 24px rgba(18,21,28,0.14);
+  --font-display:'Space Grotesk', 'Segoe UI', Roboto, 'Noto Sans', system-ui, sans-serif;
+  --font-body:'Inter', 'Segoe UI', Roboto, 'Noto Sans', system-ui, -apple-system, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+  touch-action:manipulation;
+}
+h1,h2,h3,.display{font-family:var(--font-display); letter-spacing:-0.01em;}
+button{font-family:inherit;}
+
+/* ---------- États vides ---------- */
+.empty-state{
+  text-align:center; padding:56px 20px; color:var(--ink-2);
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.empty-state .ic{font-size:34px;}
+.empty-state strong{color:var(--ink); font-size:16px;}
+.empty-cta{
+  margin-top:6px; border:none; background:var(--brand); color:#fff;
+  font-weight:600; font-size:14px; padding:10px 18px; border-radius:12px; cursor:pointer;
+}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed; left:50%; bottom:calc(90px + var(--safe-bottom)); transform:translateX(-50%);
+  background:var(--ink); color:#fff; padding:10px 16px; border-radius:12px; font-size:13px; font-weight:600;
+  z-index:60; opacity:0; pointer-events:none; transition:opacity 0.18s, transform 0.18s;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+
+#import-input{display:none;}
