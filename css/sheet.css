@@ -1,0 +1,109 @@
+/* ==========================================================================
+   Assistant — css/sheet.css
+   Version : V002 — 2026-10-12 18:47 (heure de Paris)
+   Modifs  : Extrait de index.html (V01). Feuille modale de création/édition
+             de tâche : champs, sélecteurs, curseurs, dépendances, boutons.
+   ========================================================================== */
+
+.sheet-backdrop{
+  position:fixed; inset:0; background:rgba(18,21,28,0.42); z-index:40;
+  display:none; align-items:flex-end; justify-content:center;
+}
+.sheet-backdrop.open{display:flex;}
+.sheet{
+  background:var(--surface); width:100%; max-width:560px; max-height:92dvh;
+  border-radius:20px 20px 0 0; padding:8px 20px calc(20px + var(--safe-bottom));
+  overflow-y:auto; box-shadow:var(--shadow-2);
+  animation:sheet-up 0.18s ease-out;
+}
+@keyframes sheet-up{from{transform:translateY(24px); opacity:0.6;} to{transform:translateY(0); opacity:1;}}
+.sheet-handle{width:36px; height:4px; background:var(--border); border-radius:100px; margin:8px auto 14px;}
+.sheet-title{font-size:18px; font-weight:700; margin:0 0 16px;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12px; font-weight:700; color:var(--ink-2); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.03em;}
+.field input[type=text], .field input[type=date], .field input[type=number], .field textarea, .field select{
+  width:100%; padding:11px 12px; border:1.5px solid var(--border); border-radius:11px;
+  font-size:15px; font-family:inherit; background:var(--surface); color:var(--ink);
+}
+.field textarea{resize:vertical; min-height:60px;}
+.field input:focus, .field textarea:focus, .field select:focus{outline:none; border-color:var(--brand);}
+.cat-picker{display:flex; gap:8px; flex-wrap:wrap;}
+.cat-opt{
+  flex:1; min-width:88px; display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:10px 6px; border-radius:12px; border:1.5px solid var(--border); background:var(--surface);
+  font-size:11.5px; font-weight:600; color:var(--ink-2); cursor:pointer;
+}
+.cat-opt .ic{font-size:19px;}
+.cat-opt.sel{border-color:var(--brand); background:rgba(36,80,240,0.06); color:var(--brand-ink);}
+
+.slider-row{margin-bottom:16px;}
+.slider-row .slider-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+.slider-row label{font-size:12px; font-weight:700; color:var(--ink-2); text-transform:uppercase; letter-spacing:0.03em;}
+.slider-val{font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--ink);}
+input[type=range]{width:100%; height:34px; -webkit-appearance:none; background:transparent;}
+input[type=range]::-webkit-slider-runnable-track{height:6px; border-radius:100px; background:var(--surface-2);}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--brand);
+  border:3px solid #fff; box-shadow:0 1px 4px rgba(18,21,28,0.3); margin-top:-9px;
+}
+input[type=range]::-moz-range-track{height:6px; border-radius:100px; background:var(--surface-2);}
+input[type=range]::-moz-range-thumb{width:24px; height:24px; border-radius:50%; background:var(--brand); border:3px solid #fff;}
+
+.status-picker{display:flex; gap:6px; flex-wrap:wrap;}
+.status-opt{
+  flex:1; min-width:76px; padding:9px 6px; text-align:center; border-radius:10px; border:1.5px solid var(--border);
+  font-size:12px; font-weight:700; color:var(--ink-2); cursor:pointer; background:var(--surface);
+}
+.status-opt.sel{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+.dep-picker{
+  max-height:220px; overflow-y:auto; border:1.5px solid var(--border); border-radius:11px;
+  background:var(--surface);
+}
+.dep-row{
+  display:flex; align-items:center; gap:9px; padding:10px 12px; cursor:pointer;
+  border-bottom:1px solid var(--border);
+}
+.dep-row:last-child{border-bottom:none;}
+.dep-row.disabled{opacity:0.4; cursor:not-allowed;}
+.dep-check{
+  width:20px; height:20px; border-radius:6px; border:1.5px solid var(--border); flex:0 0 auto;
+  display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff;
+}
+.dep-row.checked .dep-check{background:var(--brand); border-color:var(--brand);}
+.dep-cat{font-size:14px; flex:0 0 auto;}
+.dep-title{font-size:13.5px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.dep-done-tag{font-size:10px; font-weight:700; color:var(--ok); flex:0 0 auto;}
+.dep-empty{padding:16px 12px; text-align:center; font-size:12.5px; color:var(--ink-3);}
+.dep-banner{
+  display:flex; align-items:flex-start; gap:9px; background:rgba(240,99,30,0.09); border:1px solid rgba(240,99,30,0.3);
+  border-radius:12px; padding:11px 13px; font-size:12.5px; color:var(--ink); line-height:1.4;
+}
+.dep-banner b{display:block; color:var(--warn); font-size:12px; margin-bottom:2px;}
+.dep-banner .ic{font-size:15px; flex:0 0 auto;}
+
+.subtasks-box{border:1.5px solid var(--border); border-radius:11px; overflow:hidden;}
+.subtasks-row{
+  display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px;
+}
+.subtasks-row:last-child{border-bottom:none;}
+.subtasks-hint{padding:12px; font-size:12.5px; color:var(--ink-2); line-height:1.4;}
+.subtasks-open-btn{
+  width:100%; padding:12px; border:none; background:var(--surface-2); color:var(--ink);
+  font-weight:700; font-size:13.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.subtask-count-badge{
+  font-size:10.5px; font-weight:700; color:var(--brand-ink); background:rgba(36,80,240,0.1);
+  padding:2px 8px; border-radius:100px;
+}
+
+.sheet-actions{display:flex; gap:10px; margin-top:6px;}
+.btn{flex:1; padding:13px; border-radius:12px; border:none; font-weight:700; font-size:14.5px; cursor:pointer;}
+.btn-primary{background:var(--brand); color:#fff;}
+.btn-ghost{background:var(--surface-2); color:var(--ink);}
+.btn-danger-ghost{background:rgba(225,38,74,0.08); color:var(--danger);}
+
+@media (min-width:620px){
+  .sheet-backdrop{align-items:center;}
+  .sheet{border-radius:20px; max-height:88dvh;}
+}
