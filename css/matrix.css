@@ -1,7 +1,7 @@
 /* ==========================================================================
    Assistant — css/matrix.css
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Vue Matrice (SVG, bulles, légende).
+   Version : V003 — 2026-10-16 21:55 (heure de Paris)
+   Modifs  : Ajout du style de l'étiquette flottante (titre complet d'une bulle).
    ========================================================================== */
 
 .matrix-wrap{
@@ -17,6 +17,9 @@ svg.matrix-svg{width:100%; height:auto; display:block; touch-action:none;}
 .resize-hit{fill:#000; opacity:0;}
 .quad-label{font-family:var(--font-body); font-size:11.5px; font-weight:700; letter-spacing:0.03em; fill:var(--ink-2); text-transform:uppercase; paint-order:stroke; stroke:#fff; stroke-width:4px; stroke-linejoin:round;}
 .axis-label{font-family:var(--font-body); font-size:14px; font-weight:700; fill:var(--ink);}
+.bubble-caption{pointer-events:none;}
+.bubble-caption-bg{fill:var(--ink); opacity:0.95;}
+.bubble-caption-text{fill:#fff; font-family:var(--font-body); font-weight:600;}
 .resize-handle{fill:var(--surface); stroke:var(--ink); stroke-width:2; cursor:nwse-resize;}
 
 @media (min-width:620px){
