@@ -1,9 +1,11 @@
 /* ==========================================================================
    Assistant — js/matrix.js
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Vue Matrice : dessin SVG des bulles,
-             glisser-déposer (urgence/importance), redimensionnement
-             (complexité), état vide.
+   Version : V003 — 2026-10-16 21:55 (heure de Paris)
+   Modifs  : Correctif libellés des bulles : police calculée en pixels ÉCRAN
+             (11 à 14 px, compensation de l'échelle du SVG), découpage en lignes
+             qui tient dans la bulle, libellé masqué si la bulle est trop petite.
+             Nouvelle étiquette flottante (titre complet) au toucher / survol /
+             glisser, et infobulle <title>.
    Dépend de : config.js, state.js, helpers.js (appelle App.sheet à l'exécution)
    ========================================================================== */
 (function(){
@@ -39,7 +41,8 @@
   let measureEl = null;
   function textWidth(svg, str, fontSize){
     if(!measureEl){
-      measureEl = svgEl('text', {x:-9999, y:-9999, 'font-family':"'Inter', Roboto, sans-serif", 'font-weight':600});
+      // Même famille de police que le rendu réel, sinon les largeurs mesurées sont fausses
+      measureEl = svgEl('text', {x:-9999, y:-9999, 'font-weight':700, style:'font-family:' + getComputedStyle(document.body).fontFamily + ';'});
       svg.appendChild(measureEl);
     } else if(measureEl.parentNode !== svg){
       svg.appendChild(measureEl);
@@ -49,36 +52,118 @@
     return measureEl.getComputedTextLength();
   }
 
-  // Découpe le titre en 1 à 3 lignes centrées qui tiennent dans la bulle, avec « … » si besoin
-  function wrapLabel(svg, title, r){
-    const fontSize = Math.max(9, Math.min(13, r*0.24));
-    const lineHeight = fontSize * 1.16;
-    const maxLines = r < 20 ? 1 : (r < 32 ? 2 : 3);
-    const words = title.split(/\s+/).filter(Boolean);
+  /* Échelle d'affichage : pixels écran par unité SVG (le SVG 460×460 est réduit à
+     l'écran, ce qui rendait les polices illisibles). Vue masquée -> valeur de repli. */
+  const LABEL_MAX_PX = 14, LABEL_MIN_PX = 10, CAPTION_PX = 13;
+  function displayScale(svg){
+    const w = svg.getBoundingClientRect().width;
+    return w > 0 ? w / MX.size : 0.8;
+  }
+
+  // Raccourcit str avec « … » jusqu'à tenir dans maxW
+  function truncateToWidth(svg, str, fontSize, maxW){
+    if(textWidth(svg, str, fontSize) <= maxW) return str;
+    let s = str;
+    while(s.length > 1 && textWidth(svg, s + '…', fontSize) > maxW){ s = s.slice(0, -1); }
+    return s.replace(/[,.;:\s]+$/, '') + '…';
+  }
+
+  // Découpe en lignes (au plus maxLines) ; widthOf(i, n) = largeur disponible de la ligne i sur n.
+  // Renvoie {lines, truncated}. Si allowTruncate est faux, renvoie null quand tout ne tient pas.
+  function layoutLines(svg, words, fontSize, maxLines, widthOf, allowTruncate){
     const lines = [];
-    let current = "";
     let idx = 0;
-    const chordHalf = (lineIndex) => {
-      const dy = lineIndex * lineHeight;
-      return Math.sqrt(Math.max(r*r - dy*dy, (r*0.35)*(r*0.35))) * 0.86;
-    };
     while(idx < words.length && lines.length < maxLines){
-      const word = words[idx];
-      const attempt = current ? current + " " + word : word;
-      if(textWidth(svg, attempt, fontSize) <= chordHalf(lines.length)*2 || !current){
-        current = attempt; idx++;
-      } else {
-        lines.push(current); current = "";
+      const w = widthOf(lines.length, maxLines);
+      let current = "";
+      while(idx < words.length){
+        const attempt = current ? current + " " + words[idx] : words[idx];
+        if(textWidth(svg, attempt, fontSize) <= w){ current = attempt; idx++; }
+        else break;
+      }
+      if(!current){ // un seul mot plus large que la ligne
+        if(!allowTruncate) return null;
+        current = truncateToWidth(svg, words[idx], fontSize, w); idx++;
+      }
+      lines.push(current);
+    }
+    if(idx < words.length){
+      if(!allowTruncate) return null;
+      const li = lines.length - 1;
+      const w = widthOf(li, maxLines);
+      lines[li] = truncateToWidth(svg, lines[li] + ' ' + words.slice(idx).join(' '), fontSize, w);
+      return { lines, truncated:true };
+    }
+    return { lines, truncated:false };
+  }
+
+  // Libellé d'une bulle : police 11–14 px à l'écran ; on prend la plus grande qui permet
+  // d'afficher le titre en entier, sinon on tronque à 11 px, sinon on n'affiche rien.
+  function wrapLabel(svg, title, r){
+    const s = displayScale(svg);
+    const words = title.split(/\s+/).filter(Boolean);
+    const empty = { lines:[], fontSize:LABEL_MIN_PX/s, lineHeight:LABEL_MIN_PX/s*1.16 };
+    if(!words.length) return empty;
+    const chord = (fs, lh) => (i, n) => {
+      const dy = Math.abs(i - (n-1)/2) * lh + lh*0.55; // bord extérieur de la ligne
+      return 2 * Math.sqrt(Math.max(r*r - dy*dy, 0)) * 0.94;
+    };
+    for(let px = LABEL_MAX_PX; px >= LABEL_MIN_PX; px--){
+      const fs = px / s, lh = fs * 1.16;
+      const maxLines = Math.max(1, Math.min(3, Math.floor(r*1.5 / lh)));
+      for(let n = 1; n <= maxLines; n++){
+        const res = layoutLines(svg, words, fs, n, chord(fs, lh), false);
+        if(res) return { lines:res.lines, fontSize:fs, lineHeight:lh };
       }
     }
-    if(current) lines.push(current);
-    if(idx < words.length){
-      const li = lines.length - 1;
-      let last = lines[li] || "";
-      while(last.length > 1 && textWidth(svg, last+'…', fontSize) > chordHalf(li)*2){ last = last.slice(0, -1); }
-      lines[li] = last.replace(/[,.\s]+$/, '') + '…';
+    const fs = LABEL_MIN_PX / s, lh = fs * 1.16;
+    const maxLines = Math.max(1, Math.min(3, Math.floor(r*1.5 / lh)));
+    const res = layoutLines(svg, words, fs, maxLines, chord(fs, lh), true);
+    // Dernière ligne réduite à presque rien (« la c… ») : on la remplace par « … » sur la précédente
+    if(res.truncated && res.lines.length > 1 && res.lines[res.lines.length-1].replace('…','').length < 3){
+      res.lines.pop();
+      res.lines[res.lines.length-1] = res.lines[res.lines.length-1].replace(/[…\s]+$/, '') + '…';
     }
-    return { lines, fontSize, lineHeight };
+    const firstVisible = (res.lines[0] || '').replace('…','');
+    if(firstVisible.length < 4) return empty; // bulle trop petite : voir l'étiquette flottante
+    return { lines:res.lines, fontSize:fs, lineHeight:lh };
+  }
+
+  /* ---------- Étiquette flottante (titre complet) ---------- */
+  function hideCaption(){
+    const old = document.getElementById('bubble-caption');
+    if(old) old.remove();
+  }
+  function showCaption(id){
+    hideCaption();
+    const svg = document.getElementById('matrix-svg');
+    const g = svg.querySelector(`.bubble[data-id="${id}"]`);
+    const t = findTask(id);
+    if(!g || !t) return;
+    const main = g.querySelector('[data-role="main"]');
+    const cx = Number(main.getAttribute('cx')), cy = Number(main.getAttribute('cy')), r = Number(main.getAttribute('r'));
+    const s = displayScale(svg);
+    const fs = CAPTION_PX / s, lh = fs * 1.2, pad = 7 / s;
+    const maxW = MX.size - 16 - pad*2;
+    const words = t.title.split(/\s+/).filter(Boolean);
+    const res = layoutLines(svg, words, fs, 2, () => maxW, true) || { lines:[t.title] };
+    const textW = Math.max(...res.lines.map(l => textWidth(svg, l, fs)));
+    const w = textW + pad*2, h = res.lines.length * lh + pad*2 - (lh - fs)*0.5;
+    const x = Math.min(Math.max(cx - w/2, 4), MX.size - w - 4);
+    let y = cy - r - 8/s - h;
+    if(y < 4) y = cy + r + 8/s; // pas de place au-dessus : en dessous
+    y = Math.min(y, MX.size - h - 4);
+
+    const cap = svgEl('g', {id:'bubble-caption', class:'bubble-caption'});
+    cap.appendChild(svgEl('rect', {x, y, width:w, height:h, rx:8/s, class:'bubble-caption-bg'}));
+    const text = svgEl('text', {'font-size':fs, class:'bubble-caption-text'});
+    res.lines.forEach((line,i)=>{
+      const tspan = svgEl('tspan', {x:x+pad, y:y + pad + fs*0.85 + i*lh});
+      tspan.textContent = line;
+      text.appendChild(tspan);
+    });
+    cap.appendChild(text);
+    svg.appendChild(cap);
   }
 
   // Garde le cercle entier de la bulle dans le canevas, même près des bords
@@ -172,6 +257,7 @@
       const { cx, cy, r } = layout[t.id];
       const blocked = isBlockedByDeps(t);
       const g = svgEl('g', {class:'bubble', 'data-id':t.id, opacity: blocked ? '0.55' : '1'});
+      const tip = svgEl('title', {}); tip.textContent = t.title; g.appendChild(tip);
 
       const circle = svgEl('circle', {cx, cy, r, fill:`url(#grad-${t.category in CATEGORIES ? t.category : 'autre'})`, stroke:'#fff', 'stroke-width':1.5, filter:'url(#bubble-shadow)', 'data-role':'main'});
       g.appendChild(circle);
@@ -273,6 +359,7 @@
     const hx = cx + r*0.71, hy = cy + r*0.71;
     handle.setAttribute('cx', hx); handle.setAttribute('cy', hy);
     resizeHit.setAttribute('cx', hx); resizeHit.setAttribute('cy', hy);
+    if(document.getElementById('bubble-caption')) showCaption(t.id);
   }
 
   function svgPoint(svg, clientX, clientY){
@@ -296,6 +383,18 @@
       bubble.classList.add('dragging');
       svg.setPointerCapture(ev.pointerId);
       ev.preventDefault();
+      showCaption(dragState.id);
+    });
+
+    // Survol à la souris : afficher le titre complet
+    svg.addEventListener('pointerover', (ev)=>{
+      if(dragState || ev.pointerType !== 'mouse') return;
+      const bubble = ev.target.closest && ev.target.closest('.bubble');
+      if(bubble) showCaption(bubble.getAttribute('data-id'));
+    });
+    svg.addEventListener('pointerout', (ev)=>{
+      if(dragState || ev.pointerType !== 'mouse') return;
+      hideCaption();
     });
 
     svg.addEventListener('pointermove', (ev)=>{
@@ -329,6 +428,7 @@
       const wasTap = !dragState.moved;
       const id = dragState.id;
       dragState = null;
+      hideCaption();
       if(wasTap){
         App.sheet.open(id);
       } else {
