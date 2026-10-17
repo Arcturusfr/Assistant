@@ -1,7 +1,6 @@
 <!--
-  ToDo_Utilisateur.md — Version V003 — 2026-10-16 22:10 (heure de Paris)
-  Modifs : tâches V003 (installer et tester le correctif) ; décisions de modélisation
-           cochées ; restent 3 petites décisions pour V004.
+  ToDo_Utilisateur.md — Version V004a — 2026-10-17 15:45 (heure de Paris)
+  Modifs : V003 validée, sauvegarde JSON faite ; tâches V004a (installer, tester la migration).
 -->
 # Assistant — Tâches à exécuter par l'utilisateur
 
@@ -9,17 +8,23 @@
 
 - [x] V002 : arborescence enregistrée, testée (plié / déplié), ajoutée à la base « Contexte »
 - [x] Décisions de modélisation : complexité, durée, taux d'exécution / statut, dépendances, « Autre », conversion 5→4 niveaux, encodage visuel
+- [x] Décisions urgence (auto / manuelle / héritée), durée Court / Long, icône de catégorie
+- [x] V003 validée sur smartphone ; sauvegarde JSON exportée avant la migration
 
-## À faire (V003)
+## À faire (V004a)
 
-- [ ] Remplacer sur le smartphone et GitHub : `index.html`, `js/matrix.js`, `css/matrix.css` (les autres fichiers sont inchangés)
-- [ ] Tester dans l'aperçu : libellés des bulles lisibles (plié et déplié) ; toucher / maintenir une bulle affiche son titre complet ; un simple tap ouvre toujours la fiche ; glisser et redimensionner fonctionnent
-- [ ] Me dire si les petites bulles sans libellé gênent (sinon je propose d'agrandir légèrement les rayons)
-- [ ] Remplacer dans la base « Contexte » : `roadmap-et-avancement.md`, `ToDo_Utilisateur.md`, `index.html`, `matrix.js`, `matrix.css`
-- [ ] **Faire une sauvegarde JSON (bouton Export) de vos données actuelles avant la migration V004**
+- [ ] Remplacer sur le smartphone et GitHub (arborescence complète) :
+  - `index.html`
+  - `css/sheet.css`
+  - `js/config.js`, `js/storage.js`, `js/state.js`, `js/helpers.js`, `js/matrix.js`, `js/kanban.js`, `js/list.js`, `js/sheet.js`, `js/io.js`, `js/app.js`
+  - **nouveaux fichiers** : `js/schema.js`, `js/calc.js`
+  - inchangés : `css/base.css`, `css/layout.css`, `css/matrix.css`, `css/kanban.css`, `css/list.css`
+- [ ] Ouvrir l'application : un message « Données converties… » doit apparaître **une seule fois**. Vos données de V003 restent sauvegardées en l'état (ne les supprimez pas du navigateur).
+- [ ] Vérifier vos données : mêmes éléments (anciennes tâches = Projets, anciennes sous-tâches = Tâches), statuts cohérents, dépendances conservées.
+- [ ] Tester : matrice (bulles, glisser, poignée), kanban (déplacer une carte ; déplacer un projet qui a du contenu), liste, création d'un projet → tâche → sous-tâche, bouton « Retour » (remonte d'un niveau), export puis import.
+- [ ] Me dire si les bulles (rayons recalés sur 4 niveaux) conviennent
+- [ ] Remplacer dans la base « Contexte » : tous les fichiers ci-dessus + `ARCHITECTURE.md`, `roadmap-et-avancement.md`, `ToDo_Utilisateur.md`
 
-## À trancher avant V004
+## À trancher avant V004b
 
-- [ ] Urgence : saisie sur 4 niveaux, déduite de l'échéance, ou les deux ?
-- [ ] Libellés de la durée : « Court / Long » vous convient-il ?
-- [ ] Catégorie : une icône en coin de rectangle vous convient-elle ?
+Rien : tout est décidé. Dès que V004a est validée, on lance V004b (interface complète).
