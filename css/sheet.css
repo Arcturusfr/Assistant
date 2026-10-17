@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — css/sheet.css
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Feuille modale de création/édition
-             de tâche : champs, sélecteurs, curseurs, dépendances, boutons.
+   Version : V004a — 2026-10-17 15:20 (heure de Paris)
+   Modifs  : Indications « calculé » (.field-hint), curseur désactivé, chemin
+             hiérarchique des dépendances (.dep-main / .dep-path).
    ========================================================================== */
 
 .sheet-backdrop{
@@ -49,6 +49,9 @@ input[type=range]::-webkit-slider-thumb{
 input[type=range]::-moz-range-track{height:6px; border-radius:100px; background:var(--surface-2);}
 input[type=range]::-moz-range-thumb{width:24px; height:24px; border-radius:50%; background:var(--brand); border:3px solid #fff;}
 
+.field-hint{font-size:12px; color:var(--ink-3); margin-top:6px; line-height:1.35;}
+input[type=range]:disabled{opacity:0.4;}
+
 .status-picker{display:flex; gap:6px; flex-wrap:wrap;}
 .status-opt{
   flex:1; min-width:76px; padding:9px 6px; text-align:center; border-radius:10px; border:1.5px solid var(--border);
@@ -72,6 +75,9 @@ input[type=range]::-moz-range-thumb{width:24px; height:24px; border-radius:50%; 
 }
 .dep-row.checked .dep-check{background:var(--brand); border-color:var(--brand);}
 .dep-cat{font-size:14px; flex:0 0 auto;}
+.dep-main{flex:1; min-width:0; display:flex; flex-direction:column;}
+.dep-path{font-size:11px; font-weight:500; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.dep-main .dep-title{flex:none;}
 .dep-title{font-size:13.5px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .dep-done-tag{font-size:10px; font-weight:700; color:var(--ok); flex:0 0 auto;}
 .dep-empty{padding:16px 12px; text-align:center; font-size:12.5px; color:var(--ink-3);}
