@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — js/app.js
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Point d'entrée : navigation entre
-             vues, bandeau sous-tâches, rendu global, initialisation.
+   Version : V004a — 2026-10-17 15:20 (heure de Paris)
+   Modifs  : Bandeau de contenu avec vocabulaire Projet / Tâche / Sous-tâche ;
+             message unique après la conversion automatique des données.
    Dépend de : tous les autres fichiers js — à charger en dernier.
    ========================================================================== */
 (function(){
@@ -16,7 +16,7 @@
     if(state.activeParentId){
       const parent = findTask(state.activeParentId);
       banner.style.display = 'flex';
-      label.textContent = parent ? `Sous-tâches de : ${parent.title}` : 'Sous-tâches';
+      label.textContent = parent ? `Dans ${App.calc.typeOf(parent).inWord} : ${parent.title}` : 'Contenu';
     } else {
       banner.style.display = 'none';
     }
@@ -52,4 +52,7 @@
   App.helpers.initViewportFix();
   App.matrix.init();
   renderAll();
+  if(state.migratedFromV1){
+    App.helpers.toast('Données converties au nouveau format — ancienne version conservée', 3500);
+  }
 })();

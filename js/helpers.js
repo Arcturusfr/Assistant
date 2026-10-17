@@ -1,9 +1,8 @@
 /* ==========================================================================
    Assistant — js/helpers.js
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Utilitaires : dates, score, toast,
-             échappement HTML, nuances de couleur, correctif hauteur écran
-             (dépliants / Samsung Internet).
+   Version : V004a — 2026-10-17 15:20 (heure de Paris)
+   Modifs  : scoreOf délègue à App.calc (urgence effective × importance) ; toast avec durée
+             réglable (message de migration).
    Dépend de : config.js
    ========================================================================== */
 (function(){
@@ -43,14 +42,14 @@
     if(n <= 7) return { text:`Dans ${n}j`, cls:"due soon" };
     return { text: new Date(dateStr+"T00:00:00").toLocaleDateString('fr-FR',{day:'numeric', month:'short'}), cls:"due later" };
   }
-  function scoreOf(t){ return t.urgency * t.importance; }
+  function scoreOf(t){ return App.calc.scoreOf(t); }
 
-  function toast(msg){
+  function toast(msg, ms){
     const el = document.getElementById('toast');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(toast._t);
-    toast._t = setTimeout(()=> el.classList.remove('show'), 1800);
+    toast._t = setTimeout(()=> el.classList.remove('show'), ms || 1800);
   }
 
   function escapeHtml(s){
