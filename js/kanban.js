@@ -1,15 +1,17 @@
 /* ==========================================================================
    Assistant — js/kanban.js
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Vue Kanban : colonnes par statut,
-             cartes, glisser-déposer entre colonnes.
-   Dépend de : config.js, state.js, helpers.js (appelle App.sheet à l'exécution)
+   Version : V004a — 2026-10-17 15:20 (heure de Paris)
+   Modifs  : Colonnes déduites du taux d'exécution (+ indicateur Bloqué), urgence effective
+             (↑ si héritée), « en attente » (⏳) distinct de « Bloqué » (🔒) ; déplacer
+             un parent ne change que son indicateur Bloqué (statut calculé).
+   Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet à l'exécution)
    ========================================================================== */
 (function(){
   "use strict";
   const { CATEGORIES, STATUSES } = App.config;
   const { findTask, scopedTasks, unmetDependencies, subtaskCount, subtaskDoneCount, persist } = App.model;
-  const { dueLabel, scoreOf, escapeHtml } = App.helpers;
+  const { dueLabel, scoreOf, escapeHtml, toast } = App.helpers;
+  const calc = App.calc;
 
   let kanbanDrag = null;
 
@@ -20,7 +22,7 @@
       const col = document.createElement('div');
       col.className = 'kcol';
       col.dataset.status = s.id;
-      const list = scopedTasks().filter(t=>t.status === s.id).sort((a,b)=> scoreOf(b)-scoreOf(a));
+      const list = scopedTasks().filter(t=>calc.columnOf(t) === s.id).sort((a,b)=> scoreOf(b)-scoreOf(a));
       col.innerHTML = `<div class="kcol-head"><span class="kcol-title">${s.label}</span><span class="kcol-count">${list.length}</span></div>
                         <div class="kcol-body" data-status="${s.id}"></div>`;
       root.appendChild(col);
@@ -37,12 +39,14 @@
     const due = dueLabel(t.due);
     const unmet = unmetDependencies(t);
     const subCount = subtaskCount(t.id);
+    const eff = calc.effectiveUrgency(t);
+    const ui = eff === null ? `I${t.importance}` : `U${eff}${calc.isUrgencyInherited(t) ? '↑' : ''} · I${t.importance}`;
     card.innerHTML = `
       <div class="card-top"><span class="card-cat">${cat.icon}</span><span class="card-title">${escapeHtml(t.title)}</span></div>
       <div class="card-meta">
-        <span class="tag ghost">U${Math.round(t.urgency)} · I${Math.round(t.importance)}</span>
+        <span class="tag ghost">${ui}</span>
         ${due ? `<span class="tag ${due.cls}">${due.text}</span>` : ''}
-        ${unmet.length ? `<span class="tag due" title="${unmet.map(d=>escapeHtml(d.title)).join(', ')}"><span class="lock-badge">🔒</span> ${unmet.length}</span>` : ''}
+        ${unmet.length ? `<span class="tag due" title="${unmet.map(d=>escapeHtml(d.title)).join(', ')}"><span class="lock-badge">⏳</span> ${unmet.length}</span>` : ''}
         ${subCount ? `<span class="tag ghost">📁 ${subtaskDoneCount(t.id)}/${subCount}</span>` : ''}
       </div>`;
     card.addEventListener('pointerdown', onCardPointerDown);
@@ -93,7 +97,11 @@
         const body = placeholder.parentElement;
         if(body && body.classList.contains('kcol-body')){
           const t = findTask(kanbanDrag.id);
-          if(t){ t.status = body.dataset.status; persist(); }
+          if(t){
+            const r = calc.applyColumn(t, body.dataset.status);
+            persist();
+            if(r === 'computed') toast('Statut calculé à partir du contenu : seul « Bloqué » est modifiable');
+          }
         }
       }
       placeholder.remove();

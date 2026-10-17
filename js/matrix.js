@@ -1,33 +1,39 @@
 /* ==========================================================================
    Assistant — js/matrix.js
-   Version : V003 — 2026-10-16 21:55 (heure de Paris)
-   Modifs  : Correctif libellés des bulles : police calculée en pixels ÉCRAN
-             (11 à 14 px, compensation de l'échelle du SVG), découpage en lignes
-             qui tient dans la bulle, libellé masqué si la bulle est trop petite.
-             Nouvelle étiquette flottante (titre complet) au toucher / survol /
-             glisser, et infobulle <title>.
-   Dépend de : config.js, state.js, helpers.js (appelle App.sheet à l'exécution)
+   Version : V004a — 2026-10-17 15:20 (heure de Paris)
+   Modifs  : Adaptation au nouveau modèle : axes sur 4 niveaux, position = urgence
+             EFFECTIVE (héritée des enfants), rayon = complexité effective (calculée
+             pour un parent), éléments terminés masqués. Glisser horizontal bloqué si
+             l'urgence est héritée, redimensionnement bloqué pour un parent ; glisser
+             une urgence automatique la bascule en manuel. Badges : 🔒 bloqué, ⏳ en attente.
+   Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet à l'exécution)
    ========================================================================== */
 (function(){
   "use strict";
-  const { SVG_NS, CATEGORIES, MX, R_MIN, R_STEP } = App.config;
+  const { SVG_NS, CATEGORIES, MX, R_MIN, R_STEP, LEVELS } = App.config;
   const state = App.state;
   const { findTask, scopedTasks, isBlockedByDeps, subtaskCount, persist } = App.model;
-  const { shade } = App.helpers;
+  const { shade, toast } = App.helpers;
+  const calc = App.calc;
 
-  function scaleX(u){ // urgence 1..5 -> px
-    return MX.pad + (u-1)/4 * (MX.size - MX.pad*2);
+  const SPAN = LEVELS - 1;
+  function scaleX(u){ // urgence 1..LEVELS -> px
+    return MX.pad + (u-1)/SPAN * (MX.size - MX.pad*2);
   }
-  function scaleY(imp){ // importance 1..5 -> px (haut = important)
-    return (MX.size - MX.pad) - (imp-1)/4 * (MX.size - MX.pad*2);
+  function scaleY(imp){ // importance 1..LEVELS -> px (haut = important)
+    return (MX.size - MX.pad) - (imp-1)/SPAN * (MX.size - MX.pad*2);
   }
   function unscaleX(px){
-    let u = 1 + (px - MX.pad) / (MX.size - MX.pad*2) * 4;
-    return Math.min(5, Math.max(1, u));
+    let u = 1 + (px - MX.pad) / (MX.size - MX.pad*2) * SPAN;
+    return Math.min(LEVELS, Math.max(1, u));
   }
   function unscaleY(py){
-    let imp = 1 + ((MX.size - MX.pad) - py) / (MX.size - MX.pad*2) * 4;
-    return Math.min(5, Math.max(1, imp));
+    let imp = 1 + ((MX.size - MX.pad) - py) / (MX.size - MX.pad*2) * SPAN;
+    return Math.min(LEVELS, Math.max(1, imp));
+  }
+  // Valeurs affichées d'un élément non terminé : urgence effective, importance, complexité effective
+  function metrics(t){
+    return { u: calc.effectiveUrgency(t) || calc.ownUrgency(t), i: t.importance, c: calc.effectiveComplexity(t) };
   }
   function radiusFor(c){ return R_MIN + (c-1) * R_STEP; }
 
@@ -179,13 +185,16 @@
   // impossibles à cliquer : on les répartit autour du point commun.
   function computeBubbleLayout(taskList){
     const groups = {};
+    const mt = {};
     taskList.forEach(t=>{
-      const key = `${Math.round(t.urgency)}|${Math.round(t.importance)}|${Math.round(t.complexity)}`;
+      const m = mt[t.id] = metrics(t);
+      const key = `${m.u}|${m.i}|${m.c}`;
       (groups[key] = groups[key] || []).push(t);
     });
     const layout = {};
     Object.values(groups).forEach(group=>{
-      const baseCx = scaleX(group[0].urgency), baseCy = scaleY(group[0].importance), r = radiusFor(group[0].complexity);
+      const m0 = mt[group[0].id];
+      const baseCx = scaleX(m0.u), baseCy = scaleY(m0.i), r = radiusFor(m0.c);
       if(group.length === 1){
         const p = clampToCanvas(baseCx, baseCy, r);
         layout[group[0].id] = { cx:p.cx, cy:p.cy, r };
@@ -251,12 +260,13 @@
     ax2.textContent = 'Importance →'; svg.appendChild(ax2);
 
     // Bulles
-    const visibleTasks = scopedTasks().filter(t => t.status !== 'done');
+    const visibleTasks = scopedTasks().filter(t => !calc.isDone(t));
     const layout = computeBubbleLayout(visibleTasks);
     visibleTasks.forEach(t=>{
       const { cx, cy, r } = layout[t.id];
-      const blocked = isBlockedByDeps(t);
-      const g = svgEl('g', {class:'bubble', 'data-id':t.id, opacity: blocked ? '0.55' : '1'});
+      const waiting = isBlockedByDeps(t);       // ⏳ en attente d'une dépendance (automatique)
+      const blocked = !!t.blocked;              // 🔒 indicateur Bloqué (manuel)
+      const g = svgEl('g', {class:'bubble', 'data-id':t.id, opacity: (blocked || waiting) ? '0.55' : '1'});
       const tip = svgEl('title', {}); tip.textContent = t.title; g.appendChild(tip);
 
       const circle = svgEl('circle', {cx, cy, r, fill:`url(#grad-${t.category in CATEGORIES ? t.category : 'autre'})`, stroke:'#fff', 'stroke-width':1.5, filter:'url(#bubble-shadow)', 'data-role':'main'});
@@ -278,12 +288,12 @@
       });
       g.appendChild(label);
 
-      if(blocked){
+      if(blocked || waiting){
         const lx = cx - r*0.74, ly = cy - r*0.74;
         const lockBg = svgEl('circle', {cx:lx, cy:ly, r:Math.max(8, r*0.24), fill:'#12151C', stroke:'#fff', 'stroke-width':1.5, style:'pointer-events:none;', 'data-role':'lock-bg'});
         g.appendChild(lockBg);
         const lockIcon = svgEl('text', {x:lx, y:ly+Math.max(8,r*0.24)*0.36, 'text-anchor':'middle', 'font-size':Math.max(9,r*0.26), style:'pointer-events:none;', 'data-role':'lock-icon'});
-        lockIcon.textContent = '🔒'; g.appendChild(lockIcon);
+        lockIcon.textContent = blocked ? '🔒' : '⏳'; g.appendChild(lockIcon);
       }
 
       const subCount = subtaskCount(t.id);
@@ -328,7 +338,8 @@
     const svg = document.getElementById('matrix-svg');
     const g = svg.querySelector(`[data-id="${t.id}"]`);
     if(!g) return;
-    const raw = { cx: scaleX(t.urgency), cy: scaleY(t.importance), r: radiusFor(t.complexity) };
+    const mv = metrics(t);
+    const raw = { cx: scaleX(mv.u), cy: scaleY(mv.i), r: radiusFor(mv.c) };
     const clamped = clampToCanvas(raw.cx, raw.cy, raw.r);
     const cx = clamped.cx, cy = clamped.cy, r = raw.r;
     const main = g.querySelector('[data-role="main"]');
@@ -379,7 +390,7 @@
       if(!bubble) return;
       const role = ev.target.getAttribute('data-role');
       const mode = (role === 'resize' || role === 'resize-hit') ? 'resize' : 'move';
-      dragState = { id: bubble.getAttribute('data-id'), mode, pointerId: ev.pointerId, startX: ev.clientX, startY: ev.clientY, moved:false };
+      dragState = { id: bubble.getAttribute('data-id'), mode, pointerId: ev.pointerId, startX: ev.clientX, startY: ev.clientY, moved:false, warned:false };
       bubble.classList.add('dragging');
       svg.setPointerCapture(ev.pointerId);
       ev.preventDefault();
@@ -408,15 +419,25 @@
       const pt = svgPoint(svg, ev.clientX, ev.clientY);
 
       if(dragState.mode === 'move'){
-        t.urgency = Math.round(unscaleX(pt.x));
         t.importance = Math.round(unscaleY(pt.y));
+        const newUrg = Math.round(unscaleX(pt.x));
+        if(calc.isUrgencyInherited(t)){
+          // L'urgence vient des éléments contenus : on ne peut pas la changer en déplaçant le parent
+          if(!dragState.warned){ dragState.warned = true; toast('Urgence héritée de son contenu'); }
+        } else if(newUrg !== calc.ownUrgency(t)){
+          t.urgency = newUrg;
+          t.urgencyMode = 'manual';   // déplacer une urgence automatique la fige en saisie manuelle
+        }
+      } else if(!calc.isLeaf(t)){
+        if(!dragState.warned){ dragState.warned = true; toast('Complexité calculée à partir du contenu'); }
       } else {
         const main = svg.querySelector(`[data-id="${t.id}"] [data-role="main"]`);
-        const cx = main ? Number(main.getAttribute('cx')) : scaleX(t.urgency);
-        const cy = main ? Number(main.getAttribute('cy')) : scaleY(t.importance);
+        const mv = metrics(t);
+        const cx = main ? Number(main.getAttribute('cx')) : scaleX(mv.u);
+        const cy = main ? Number(main.getAttribute('cy')) : scaleY(mv.i);
         const dist = Math.hypot(pt.x - cx, pt.y - cy); // distance au centre ≈ rayon actuel
         const c = 1 + (dist - R_MIN) / R_STEP;
-        t.complexity = Math.min(5, Math.max(1, Math.round(c)));
+        t.complexity = Math.min(LEVELS, Math.max(1, Math.round(c)));
       }
       updateBubbleVisual(t);
     });
@@ -446,7 +467,8 @@
     let empty = document.getElementById('matrix-empty');
     const count = scopedTasks().length;
     if(count === 0){
-      const title = state.activeParentId ? "Aucune sous-tâche pour l'instant" : "Aucune tâche pour l'instant";
+      const type = calc.typeAtDepth(calc.contextDepth());
+      const title = type.none;
       const sub = "Ajoutez-en une pour la voir apparaître sur la matrice";
       if(!empty){
         empty = document.createElement('div');
@@ -454,7 +476,7 @@
         empty.className = 'empty-state';
         document.getElementById('view-matrix').appendChild(empty);
       }
-      empty.innerHTML = `<span class="ic">🧭</span><strong>${title}</strong><span>${sub}</span><button class="empty-cta" id="empty-add-btn">${state.activeParentId ? 'Ajouter une sous-tâche' : 'Ajouter une tâche'}</button>`;
+      empty.innerHTML = `<span class="ic">🧭</span><strong>${title}</strong><span>${sub}</span><button class="empty-cta" id="empty-add-btn">${type.add}</button>`;
       document.getElementById('empty-add-btn').addEventListener('click', ()=> App.sheet.open(null));
       wrap.style.display = 'none';
       document.getElementById('matrix-legend').style.display = 'none';
