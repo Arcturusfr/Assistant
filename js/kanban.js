@@ -1,16 +1,15 @@
 /* ==========================================================================
    Assistant — js/kanban.js
-   Version : V004a — 2026-10-17 15:20 (heure de Paris)
-   Modifs  : Colonnes déduites du taux d'exécution (+ indicateur Bloqué), urgence effective
-             (↑ si héritée), « en attente » (⏳) distinct de « Bloqué » (🔒) ; déplacer
-             un parent ne change que son indicateur Bloqué (statut calculé).
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Carte refaite : icône de catégorie dans un coin, pastille d'urgence (↑ si héritée),
+             importance, barre de progression, durée « Long » et étiquette libre.
    Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet à l'exécution)
    ========================================================================== */
 (function(){
   "use strict";
   const { CATEGORIES, STATUSES } = App.config;
   const { findTask, scopedTasks, unmetDependencies, subtaskCount, subtaskDoneCount, persist } = App.model;
-  const { dueLabel, scoreOf, escapeHtml, toast } = App.helpers;
+  const { dueLabel, scoreOf, escapeHtml, toast, urgencyPill, progressBar } = App.helpers;
   const calc = App.calc;
 
   let kanbanDrag = null;
@@ -40,15 +39,20 @@
     const unmet = unmetDependencies(t);
     const subCount = subtaskCount(t.id);
     const eff = calc.effectiveUrgency(t);
-    const ui = eff === null ? `I${t.importance}` : `U${eff}${calc.isUrgencyInherited(t) ? '↑' : ''} · I${t.importance}`;
+    const long = calc.effectiveDuration(t) === 'long';
     card.innerHTML = `
-      <div class="card-top"><span class="card-cat">${cat.icon}</span><span class="card-title">${escapeHtml(t.title)}</span></div>
+      <div class="card-corner" title="${cat.label}">${cat.icon}</div>
+      <div class="card-title">${escapeHtml(t.title)}</div>
       <div class="card-meta">
-        <span class="tag ghost">${ui}</span>
+        ${urgencyPill(eff, calc.isUrgencyInherited(t))}
+        <span class="tag ghost">I${t.importance}</span>
         ${due ? `<span class="tag ${due.cls}">${due.text}</span>` : ''}
         ${unmet.length ? `<span class="tag due" title="${unmet.map(d=>escapeHtml(d.title)).join(', ')}"><span class="lock-badge">⏳</span> ${unmet.length}</span>` : ''}
         ${subCount ? `<span class="tag ghost">📁 ${subtaskDoneCount(t.id)}/${subCount}</span>` : ''}
-      </div>`;
+        ${long ? `<span class="tag ghost">Long</span>` : ''}
+        ${t.tag ? `<span class="tag ghost">${escapeHtml(t.tag)}</span>` : ''}
+      </div>
+      <div class="card-prog">${progressBar(calc.effectiveProgress(t))}</div>`;
     card.addEventListener('pointerdown', onCardPointerDown);
     card.addEventListener('click', ()=>{ if(!card._dragged) App.sheet.open(t.id); });
     return card;

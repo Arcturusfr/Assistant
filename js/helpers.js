@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — js/helpers.js
-   Version : V004a — 2026-10-17 15:20 (heure de Paris)
-   Modifs  : scoreOf délègue à App.calc (urgence effective × importance) ; toast avec durée
-             réglable (message de migration).
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Ajout de urgencyPill (pastille d'urgence, « ↑ » si héritée) et progressBar
+             (barre à 4 segments + valeur) partagées par le Kanban et la Liste.
    Dépend de : config.js
    ========================================================================== */
 (function(){
@@ -42,6 +42,17 @@
     if(n <= 7) return { text:`Dans ${n}j`, cls:"due soon" };
     return { text: new Date(dateStr+"T00:00:00").toLocaleDateString('fr-FR',{day:'numeric', month:'short'}), cls:"due later" };
   }
+  // Pastille d'urgence : couleur + chiffre ; « ↑ » quand l'urgence est héritée du contenu
+  function urgencyPill(u, inherited){
+    if(u === null || u === undefined) return '';
+    const tip = 'Urgence ' + u + (inherited ? ' (héritée de son contenu)' : '');
+    return `<span class="urg u${u}" title="${tip}">${u}${inherited ? '<span class="urg-up">↑</span>' : ''}</span>`;
+  }
+  // Barre de progression : 4 segments (niveau 0..4) + valeur en %
+  function progressBar(level){
+    const segs = [1,2,3,4].map(i => `<i class="${i <= level ? 'on' : ''}"></i>`).join('');
+    return `<span class="pbar lv${level}" title="Taux d'exécution ${level*25} %">${segs}<span class="pbar-val">${level*25} %</span></span>`;
+  }
   function scoreOf(t){ return App.calc.scoreOf(t); }
 
   function toast(msg, ms){
@@ -67,5 +78,5 @@
     return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
   }
 
-  App.helpers = { initViewportFix, daysUntil, dueLabel, scoreOf, toast, escapeHtml, shade };
+  App.helpers = { initViewportFix, daysUntil, dueLabel, scoreOf, toast, escapeHtml, shade, urgencyPill, progressBar };
 })();

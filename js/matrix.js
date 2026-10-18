@@ -1,11 +1,9 @@
 /* ==========================================================================
    Assistant — js/matrix.js
-   Version : V004a — 2026-10-17 15:20 (heure de Paris)
-   Modifs  : Adaptation au nouveau modèle : axes sur 4 niveaux, position = urgence
-             EFFECTIVE (héritée des enfants), rayon = complexité effective (calculée
-             pour un parent), éléments terminés masqués. Glisser horizontal bloqué si
-             l'urgence est héritée, redimensionnement bloqué pour un parent ; glisser
-             une urgence automatique la bascule en manuel. Badges : 🔒 bloqué, ⏳ en attente.
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Poignée de redimensionnement des petites bulles : décalée vers l'extérieur et cible
+             tactile réduite, pour ne plus recouvrir le centre (déplacement possible depuis
+             n'importe quelle bulle). Reste inchangé : voir V004a.
    Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet à l'exécution)
    ========================================================================== */
 (function(){
@@ -36,6 +34,12 @@
     return { u: calc.effectiveUrgency(t) || calc.ownUrgency(t), i: t.importance, c: calc.effectiveComplexity(t) };
   }
   function radiusFor(c){ return R_MIN + (c-1) * R_STEP; }
+  // Poignée de redimensionnement (bas-droite). Sur une petite bulle elle est repoussée vers l'extérieur
+  // et sa cible tactile est réduite, pour ne pas recouvrir le centre (qui sert à déplacer la bulle).
+  function handleGeom(cx, cy, r){
+    const off = r*0.71 + (r < 26 ? 8 : 0);
+    return { hx: cx + off, hy: cy + off, hitR: Math.min(18, Math.max(10, r*0.55)) };
+  }
 
   function svgEl(tag, attrs){
     const el = document.createElementNS(SVG_NS, tag);
@@ -311,8 +315,8 @@
       g.appendChild(hit);
 
       // Poignée de redimensionnement (bas-droite), avec sa propre cible tactile
-      const hx = cx + r*0.71, hy = cy + r*0.71;
-      const resizeHit = svgEl('circle', {cx:hx, cy:hy, r:18, class:'resize-hit', 'data-role':'resize-hit'});
+      const hg = handleGeom(cx, cy, r), hx = hg.hx, hy = hg.hy;
+      const resizeHit = svgEl('circle', {cx:hx, cy:hy, r:hg.hitR, class:'resize-hit', 'data-role':'resize-hit'});
       g.appendChild(resizeHit);
       const handle = svgEl('circle', {cx:hx, cy:hy, r:9, class:'resize-handle', 'data-role':'resize'});
       g.appendChild(handle);
@@ -367,9 +371,9 @@
     });
 
     hit.setAttribute('cx', cx); hit.setAttribute('cy', cy); hit.setAttribute('r', Math.max(r, 26));
-    const hx = cx + r*0.71, hy = cy + r*0.71;
+    const hg = handleGeom(cx, cy, r), hx = hg.hx, hy = hg.hy;
     handle.setAttribute('cx', hx); handle.setAttribute('cy', hy);
-    resizeHit.setAttribute('cx', hx); resizeHit.setAttribute('cy', hy);
+    resizeHit.setAttribute('cx', hx); resizeHit.setAttribute('cy', hy); resizeHit.setAttribute('r', hg.hitR);
     if(document.getElementById('bubble-caption')) showCaption(t.id);
   }
 

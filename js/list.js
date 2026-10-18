@@ -1,16 +1,16 @@
 /* ==========================================================================
    Assistant — js/list.js
-   Version : V004a — 2026-10-17 15:20 (heure de Paris)
-   Modifs  : Statut déduit du taux d'exécution (+ Bloqué), « en attente » (⏳), vocabulaire
-             Projet / Tâche / Sous-tâche dans l'état vide et le compteur de contenu.
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Ligne refaite : type (Projet / Tâche / Sous-tâche) et domaine, pastille d'urgence,
+             barre de progression, étiquette libre ; titre et compteur selon le niveau affiché.
    Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet à l'exécution)
    ========================================================================== */
 (function(){
   "use strict";
-  const { CATEGORIES, STATUSES } = App.config;
+  const { CATEGORIES, STATUSES, DOMAINS } = App.config;
   const state = App.state;
   const { scopedTasks, unmetDependencies, subtaskCount, subtaskDoneCount } = App.model;
-  const { dueLabel, scoreOf, escapeHtml } = App.helpers;
+  const { dueLabel, scoreOf, escapeHtml, urgencyPill, progressBar } = App.helpers;
   const calc = App.calc;
 
   function renderFilters(){
@@ -27,7 +27,10 @@
     let list = scopedTasks();
     if(state.listFilter !== 'all') list = list.filter(t=>t.category===state.listFilter);
     list.sort((a,b)=> scoreOf(b)-scoreOf(a));
-    document.getElementById('list-count-sub').textContent = `${list.length} tâche${list.length>1?'s':''}`;
+    const ctxType = calc.typeAtDepth(calc.contextDepth());
+    const ctxPlural = ctxType.label.toLowerCase() + 's';
+    document.getElementById('list-title').textContent = ctxType.label + 's';
+    document.getElementById('list-count-sub').textContent = `${list.length} ${list.length>1 ? ctxPlural : ctxType.label.toLowerCase()}`;
 
     if(list.length === 0){
       const msg = calc.typeAtDepth(calc.contextDepth()).add + ' avec le bouton +';
@@ -43,13 +46,19 @@
       const childWord = calc.typeAtDepth(App.model.depthOf(t) + 1).label.toLowerCase() + 's';
       const row = document.createElement('div');
       row.className = 'list-row';
+      const type = calc.typeOf(t);
+      const typeTxt = type.label + (t.domain && DOMAINS[t.domain] ? ' · ' + DOMAINS[t.domain].label : '');
       row.innerHTML = `
         <span class="list-cat">${cat.icon}</span>
         <div class="list-main">
           <div class="list-title">${escapeHtml(t.title)}</div>
-          <div class="list-sub">${STATUSES.find(s=>s.id===calc.columnOf(t)).label}${due ? ' · '+due.text : ''}${unmet.length ? ` · ⏳ en attente de ${unmet.length}` : ''}${subCount ? ` · 📁 ${subtaskDoneCount(t.id)}/${subCount} ${childWord}` : ''}</div>
+          <div class="list-sub">${typeTxt} · ${STATUSES.find(s=>s.id===calc.columnOf(t)).label}${due ? ' · '+due.text : ''}${unmet.length ? ` · ⏳ en attente de ${unmet.length}` : ''}${subCount ? ` · 📁 ${subtaskDoneCount(t.id)}/${subCount} ${childWord}` : ''}${calc.effectiveDuration(t)==='long' ? ' · Long' : ''}${t.tag ? ' · ' + escapeHtml(t.tag) : ''}</div>
+          <div class="list-prog">${progressBar(calc.effectiveProgress(t))}</div>
         </div>
-        <div class="list-score">score<b>${Math.round(scoreOf(t))}</b></div>`;
+        <div class="list-side">
+          ${urgencyPill(calc.effectiveUrgency(t), calc.isUrgencyInherited(t))}
+          <div class="list-score">score<b>${Math.round(scoreOf(t))}</b></div>
+        </div>`;
       row.addEventListener('click', ()=> App.sheet.open(t.id));
       root.appendChild(row);
     });

@@ -1,8 +1,7 @@
 /* ==========================================================================
    Assistant — js/app.js
-   Version : V004a — 2026-10-17 15:20 (heure de Paris)
-   Modifs  : Bandeau de contenu avec vocabulaire Projet / Tâche / Sous-tâche ;
-             message unique après la conversion automatique des données.
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Le bouton + annonce l'élément à créer (projet / tâche / sous-tâche) selon le niveau affiché.
    Dépend de : tous les autres fichiers js — à charger en dernier.
    ========================================================================== */
 (function(){
@@ -24,6 +23,7 @@
 
   function renderAll(){
     updateDrillBanner();
+    document.getElementById('fab-add').title = App.calc.typeAtDepth(App.calc.contextDepth()).add;
     App.matrix.maybeShowEmpty();
     if(scopedTasks().length){ App.matrix.render(); }
     App.kanban.render();
