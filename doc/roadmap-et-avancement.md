@@ -1,23 +1,25 @@
 <!--
-  roadmap-et-avancement.md — Version V004b — 2026-10-18 00:40 (heure de Paris)
-  Modifs : V004a validée ; V004b (interface complète du modèle v2) livrée ; limites connues mises à jour ;
-           prochaine étape V005 (vue Arbre).
+  roadmap-et-avancement.md — Version V005 — 2026-10-18 15:16 (heure de Paris)
+  Modifs : V004b validée ; V005 (vue Arbre) livrée ; V008 (refonte ergonomique du formulaire) ajoutée à la feuille de route.
 -->
 # Assistant — Roadmap et avancement
 
-## Où on en est (V004b)
+## Où on en est (V005)
 
 - [x] V01 : application monofichier (matrice, kanban, liste, sous-tâches, dépendances, export/import JSON)
 - [x] V002 : découpage en modules `css/` (6 fichiers) et `js/` (10 fichiers), scripts classiques ; validée sur ZFold 8 Ultra
 - [x] `ARCHITECTURE.md` créé
 - [x] V003 : correctif des libellés de la matrice — validé sur smartphone
 - [x] V004a : nouveau modèle de données v2 (4 niveaux, Projet › Tâche › Sous-tâche, taux d'exécution, urgence propre / effective), migration automatique, export 2.0, calculs des parents (`js/schema.js`, `js/calc.js`) ; vues adaptées au strict nécessaire — validée sur smartphone
-- [x] V004b : interface complète du nouveau modèle (feuille à boutons, urgence Auto / Manuelle avec détail propre / héritée, durée, taux, Bloqué, domaine, étiquette, date de début ; pastille d'urgence et barre de progression ; icône de catégorie en coin ; libellés Projet / Tâche / Sous-tâche ; poignée des petites bulles) — **à valider sur smartphone**
-- [ ] V005 : vue Arbre (voir « Phases proposées »)
+- [x] V004b : interface complète du nouveau modèle (feuille à boutons, urgence Auto / Manuelle avec détail propre / héritée, durée, taux, Bloqué, domaine, étiquette, date de début ; pastille d'urgence et barre de progression ; icône de catégorie en coin ; libellés Projet / Tâche / Sous-tâche ; poignée des petites bulles) — validée sur smartphone
+- [x] V005 : vue Arbre sans flèches (accordéon, domaine en couleur de fond, complexité en épaisseur de bordure, urgence, progression, catégorie, bouton + par carte) — **à valider sur smartphone**
+- [ ] V006 : flèches de dépendance
+- [ ] V007 : filtres et vues prédéfinies
+- [ ] V008 : refonte ergonomique du formulaire de création / modification / suppression
 
-## Limites connues de V004b
+## Limites connues
 
-- L'encodage visuel prévu pour la vue Arbre n'est pas encore appliqué : domaine en couleur de fond, complexité en épaisseur de bordure (V005).
+- Vue Arbre (V005) : pas de flèches de dépendance (V006) ; la vue ignore le « zoom » des autres vues ; le bouton + d'une carte zoome les autres vues sur cet élément (bandeau « ← Retour »).
 - Le statut n'est plus saisi dans la feuille : il se déduit du taux d'exécution (affiché en indication). Le Kanban reste un moyen rapide de changer le statut d'une feuille.
 - Migration (rappel) : « En cours » est devenu taux 2 (50 %), tous les Projets ont le domaine « Autre » (à renseigner à la main), toutes les urgences sont en mode Manuel.
 - Sur une bulle de complexité 1, la poignée est maintenant décalée vers l'extérieur : la bulle se déplace depuis son centre et se redimensionne depuis la poignée.
@@ -76,20 +78,13 @@ Aucune : toutes les décisions de modélisation sont validées.
 
 ## Phases proposées
 
-1. ~~V003 — Correctif matrice~~ (livrée, à valider)
-2. ~~**V004a — Modèle de données**~~ (livrée et validée) : migration 5→4 niveaux (1→1, 2→2, 3→3, 4→3, 5→4), vocabulaire Projet/Tâche/Sous-tâche, calculs (complexité, durée, taux, statut, urgence effective), export 2.0 avec migration douce
-   ~~**V004b — Interface**~~ (livrée, à valider) : voir « Périmètre de V004b (livré) »
-
-## Périmètre de V004b (livré)
-
-- Feuille : boutons à 4 niveaux (urgence, importance, complexité, taux d'exécution) ne couvrant pas toute la largeur ; durée Court / Long ; interrupteur Bloqué ; étiquette libre ; date de début ; domaine (projets) ; catégorie.
-- Urgence : bascule Auto / Manuelle, valeur proposée depuis l'échéance, détail propre / héritée dans la fiche.
-- Pastille d'urgence (couleur + chiffre, « ↑ » si héritée) et barre de progression sur les cartes ; catégorie en icône dans un coin.
-- Libellés Projet / Tâche / Sous-tâche partout ; poignée de redimensionnement des petites bulles.
-3. **V005 — Vue Arbre (sans flèches)** : rectangles pastel par domaine, traits hiérarchiques, accordéon, attributs encodés
+1. ~~V003 — Correctif matrice~~ (validée)
+2. ~~V004a — Modèle de données~~ (validée) ; ~~V004b — Interface~~ (validée)
+3. **V005 — Vue Arbre (sans flèches)** (livrée, à valider) : cartes pastel par domaine, traits hiérarchiques, accordéon, attributs encodés (complexité = épaisseur de bordure, urgence, progression, catégorie)
 4. **V006 — Flèches de dépendance** (avec regroupement quand une branche est repliée)
 5. **V007 — Filtres** puis **vues prédéfinies éditables**
-6. Évaluer si la vue Arbre peut remplacer la matrice
+6. **V008 — Refonte ergonomique du formulaire** de création / modification / suppression d'un élément : périmètre à cadrer avec l'utilisateur au lancement (organisation des champs, longueur du formulaire sur smartphone, saisie plus rapide, confirmation de suppression…)
+7. Évaluer si la vue Arbre peut remplacer la matrice
 
 ## Autres pistes (à valider)
 
@@ -108,3 +103,4 @@ Aucune : toutes les décisions de modélisation sont validées.
 | (docs) | 2026-10-17 | Décisions urgence, durée, catégorie ; V004 scindée en a/b ; exigence ergonomique |
 | V004a | 2026-10-17 | Modèle de données v2, migration automatique, export 2.0, calculs des parents ; V003 validée |
 | V004b | 2026-10-18 | Interface complète du modèle v2 (feuille à boutons, urgence Auto / Manuelle, pastilles, barres de progression, icône de catégorie) ; V004a validée |
+| V005 | 2026-10-18 | Vue Arbre (sans flèches) ; V004b validée ; V008 (refonte du formulaire) ajoutée |
