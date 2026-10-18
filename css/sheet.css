@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — css/sheet.css
-   Version : V004a — 2026-10-17 15:20 (heure de Paris)
-   Modifs  : Indications « calculé » (.field-hint), curseur désactivé, chemin
-             hiérarchique des dépendances (.dep-main / .dep-path).
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Sélecteurs à boutons (.seg) ne couvrant pas toute la largeur et laissant le défilement
+             vertical (touch-action: pan-y) ; bascule Auto / Manuelle, interrupteur Bloqué, domaine.
    ========================================================================== */
 
 .sheet-backdrop{
@@ -36,28 +36,9 @@
 .cat-opt .ic{font-size:19px;}
 .cat-opt.sel{border-color:var(--brand); background:rgba(36,80,240,0.06); color:var(--brand-ink);}
 
-.slider-row{margin-bottom:16px;}
-.slider-row .slider-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
-.slider-row label{font-size:12px; font-weight:700; color:var(--ink-2); text-transform:uppercase; letter-spacing:0.03em;}
-.slider-val{font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--ink);}
-input[type=range]{width:100%; height:34px; -webkit-appearance:none; background:transparent;}
-input[type=range]::-webkit-slider-runnable-track{height:6px; border-radius:100px; background:var(--surface-2);}
-input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--brand);
-  border:3px solid #fff; box-shadow:0 1px 4px rgba(18,21,28,0.3); margin-top:-9px;
-}
-input[type=range]::-moz-range-track{height:6px; border-radius:100px; background:var(--surface-2);}
-input[type=range]::-moz-range-thumb{width:24px; height:24px; border-radius:50%; background:var(--brand); border:3px solid #fff;}
 
 .field-hint{font-size:12px; color:var(--ink-3); margin-top:6px; line-height:1.35;}
-input[type=range]:disabled{opacity:0.4;}
 
-.status-picker{display:flex; gap:6px; flex-wrap:wrap;}
-.status-opt{
-  flex:1; min-width:76px; padding:9px 6px; text-align:center; border-radius:10px; border:1.5px solid var(--border);
-  font-size:12px; font-weight:700; color:var(--ink-2); cursor:pointer; background:var(--surface);
-}
-.status-opt.sel{background:var(--ink); color:#fff; border-color:var(--ink);}
 
 .dep-picker{
   max-height:220px; overflow-y:auto; border:1.5px solid var(--border); border-radius:11px;
@@ -108,6 +89,44 @@ input[type=range]:disabled{opacity:0.4;}
 .btn-primary{background:var(--brand); color:#fff;}
 .btn-ghost{background:var(--surface-2); color:var(--ink);}
 .btn-danger-ghost{background:rgba(225,38,74,0.08); color:var(--danger);}
+
+/* ---------- Sélecteurs à boutons ---------- */
+.seg-wrap{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.seg{display:inline-flex; width:100%; max-width:230px; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface);}
+.seg.seg-5{max-width:290px;}
+.seg.seg-2{max-width:170px;}
+.seg-btn{
+  flex:1; min-width:0; height:44px; border:none; border-right:1px solid var(--border); background:var(--surface);
+  color:var(--ink-2); font-size:14px; font-weight:700; font-family:inherit; cursor:pointer;
+  touch-action:pan-y; padding:0 2px; white-space:nowrap;
+}
+.seg.seg-5 .seg-btn{font-size:13px;}
+.seg-btn:last-child{border-right:none;}
+.seg-btn.sel{background:var(--ink); color:#fff;}
+.seg-btn.u1.sel{background:var(--u1);}
+.seg-btn.u2.sel{background:var(--u2); color:#2b2100;}
+.seg-btn.u3.sel{background:var(--u3);}
+.seg-btn.u4.sel{background:var(--u4);}
+.seg-btn:disabled{cursor:not-allowed;}
+.seg.disabled .seg-btn:not(.sel){opacity:0.45;}
+.seg.disabled .seg-btn.sel{opacity:0.7;}
+.seg-btn.opt-off{opacity:0.35; cursor:not-allowed;}
+.field-label-row{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px;}
+.field-label-row label{margin-bottom:0;}
+.toggle-btn{
+  display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 16px; border-radius:12px;
+  border:1.5px solid var(--border); background:var(--surface); color:var(--ink-2);
+  font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; touch-action:pan-y;
+}
+.toggle-btn.on{background:rgba(225,38,74,0.08); border-color:var(--danger); color:var(--danger);}
+.dom-picker{display:flex; gap:6px; flex-wrap:wrap; max-width:330px;}
+.dom-opt{
+  padding:9px 12px; border-radius:100px; border:1.5px solid var(--border); background:var(--surface);
+  font-size:12.5px; font-weight:700; color:var(--ink-2); cursor:pointer; touch-action:pan-y;
+}
+.dom-opt.sel{background:var(--ink); color:#fff; border-color:var(--ink);}
+.field input[type=text].short{max-width:260px;}
+.field input[type=date]{max-width:230px;}
 
 @media (min-width:620px){
   .sheet-backdrop{align-items:center;}

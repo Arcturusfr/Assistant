@@ -1,7 +1,7 @@
 /* ==========================================================================
    Assistant — css/list.css
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Vue Liste : filtres (chips) et lignes.
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Ligne : pastille d'urgence, barre de progression, type (Projet / Tâche / Sous-tâche).
    ========================================================================== */
 
 .chip-row{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; margin-bottom:14px; scrollbar-width:none;}
@@ -22,3 +22,5 @@
 .list-sub{font-size:11.5px; color:var(--ink-2); margin-top:2px;}
 .list-score{flex:0 0 auto; text-align:right; font-size:10.5px; color:var(--ink-3); font-weight:600;}
 .list-score b{display:block; font-size:14px; color:var(--ink); font-family:var(--font-display);}
+.list-prog{margin-top:6px;}
+.list-side{display:flex; align-items:center; gap:10px; flex:0 0 auto;}

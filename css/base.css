@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — css/base.css
-   Version : V002 — 2026-10-12 18:47 (heure de Paris)
-   Modifs  : Extrait de index.html (V01). Variables, reset, typographie,
-             états vides, toast. Polices de secours étendues (Roboto, Noto Sans).
+   Version : V004b — 2026-10-18 00:40 (heure de Paris)
+   Modifs  : Couleurs d'urgence (--u1..--u4) ; composants partagés : pastille d'urgence (.urg)
+             et barre de progression à 4 segments (.pbar).
    ========================================================================== */
 
 :root{
@@ -18,6 +18,11 @@
   --danger:#E1264A;
   --ok:#0FA37F;
   --warn:#F0631E;
+
+  --u1:#0FA37F;   /* urgence 1 */
+  --u2:#E0A800;   /* urgence 2 */
+  --u3:#F0631E;   /* urgence 3 */
+  --u4:#E1264A;   /* urgence 4 */
 
   --cat-achat:#2450F0;
   --cat-admin:#8B2FD1;
@@ -74,3 +79,22 @@ button{font-family:inherit;}
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
 
 #import-input{display:none;}
+
+/* ---------- Pastille d'urgence (couleur + chiffre ; « ↑ » si héritée) ---------- */
+.urg{
+  display:inline-flex; align-items:center; justify-content:center; gap:1px;
+  min-width:20px; height:20px; padding:0 6px; border-radius:100px;
+  font-size:11.5px; font-weight:800; color:#fff; font-family:var(--font-display); flex:0 0 auto;
+}
+.urg.u1{background:var(--u1);}
+.urg.u2{background:var(--u2); color:#2b2100;}
+.urg.u3{background:var(--u3);}
+.urg.u4{background:var(--u4);}
+.urg-up{font-size:11px; line-height:1;}
+
+/* ---------- Barre de progression à 4 segments + valeur ---------- */
+.pbar{display:inline-flex; align-items:center; gap:3px;}
+.pbar i{display:block; width:14px; height:6px; border-radius:2px; background:var(--border);}
+.pbar i.on{background:var(--brand);}
+.pbar.lv4 i.on{background:var(--ok);}
+.pbar-val{margin-left:5px; font-size:10.5px; font-weight:700; color:var(--ink-2); font-style:normal;}
