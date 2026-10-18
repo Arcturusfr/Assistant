@@ -1,9 +1,9 @@
 <!--
   Assistant — index.html
-  Version : V004a — 2026-10-17 15:20 (heure de Paris)
-  Modifs  : Badge V003 -> V004a. Curseurs sur 4 niveaux (max 4), indications « calculé »
-            (complexité, statut), libellé de contenu dynamique, chargement de schema.js
-            et calc.js (nouvel ordre des scripts). Nouvelles données : voir ARCHITECTURE.md.
+  Version : V004b — 2026-10-18 00:40 (heure de Paris)
+  Modifs  : Badge V004a -> V004b. Feuille de saisie refaite : sélecteurs à boutons (urgence,
+            importance, complexité, durée, taux d'exécution), bascule Auto / Manuelle, interrupteur Bloqué,
+            domaine, étiquette libre, date de début ; titre de la Liste dynamique.
 -->
 <!DOCTYPE html>
 <html lang="fr">
@@ -26,7 +26,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-name">Assistant</span>
-      <span class="version-badge">V004a</span>
+      <span class="version-badge">V004b</span>
     </div>
     <div class="topbar-actions">
       <button class="icon-btn" id="btn-export" title="Exporter en JSON">
@@ -80,7 +80,7 @@
       <section class="view" id="view-list">
         <div class="view-header">
           <div>
-            <h1 class="view-title">Tâches</h1>
+            <h1 class="view-title" id="list-title">Projets</h1>
             <p class="view-sub" id="list-count-sub"></p>
           </div>
         </div>
@@ -97,7 +97,7 @@
 <div class="sheet-backdrop" id="sheet-backdrop">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <h2 class="sheet-title" id="sheet-title">Nouvelle tâche</h2>
+    <h2 class="sheet-title" id="sheet-title">Nouveau projet</h2>
 
     <div class="field">
       <label>Titre</label>
@@ -109,18 +109,45 @@
       <div class="cat-picker" id="f-category"></div>
     </div>
 
-    <div class="slider-row">
-      <div class="slider-top"><label>Urgence</label><span class="slider-val" id="f-urgency-val">2</span></div>
-      <input type="range" id="f-urgency" min="1" max="4" step="1" value="2">
+    <div class="field" id="domain-field" style="display:none;">
+      <label>Domaine</label>
+      <div class="dom-picker" id="f-domain"></div>
     </div>
-    <div class="slider-row">
-      <div class="slider-top"><label>Importance</label><span class="slider-val" id="f-importance-val">2</span></div>
-      <input type="range" id="f-importance" min="1" max="4" step="1" value="2">
+
+    <div class="field">
+      <label>Urgence</label>
+      <div class="seg-wrap"><div class="seg" id="f-urgency"></div></div>
+      <div class="seg-wrap" style="margin-top:8px;"><div class="seg seg-2" id="f-urgency-mode"></div></div>
+      <div class="field-hint" id="f-urgency-hint"></div>
     </div>
-    <div class="slider-row">
-      <div class="slider-top"><label>Complexité</label><span class="slider-val" id="f-complexity-val">2</span></div>
-      <input type="range" id="f-complexity" min="1" max="4" step="1" value="2">
+
+    <div class="field">
+      <label>Importance</label>
+      <div class="seg-wrap"><div class="seg" id="f-importance"></div></div>
+    </div>
+
+    <div class="field">
+      <label>Complexité</label>
+      <div class="seg-wrap"><div class="seg" id="f-complexity"></div></div>
       <div class="field-hint" id="f-complexity-hint" style="display:none;"></div>
+    </div>
+
+    <div class="field">
+      <label>Durée</label>
+      <div class="seg-wrap"><div class="seg seg-2" id="f-duration"></div></div>
+      <div class="field-hint" id="f-duration-hint" style="display:none;"></div>
+    </div>
+
+    <div class="field">
+      <label>Taux d'exécution</label>
+      <div class="seg-wrap"><div class="seg seg-5" id="f-progress"></div></div>
+      <div class="seg-wrap" style="margin-top:8px;"><button type="button" class="toggle-btn" id="f-blocked">🔒 Bloqué</button></div>
+      <div class="field-hint" id="f-progress-hint"></div>
+    </div>
+
+    <div class="field">
+      <label>Date de début (optionnel)</label>
+      <input type="date" id="f-start">
     </div>
 
     <div class="field">
@@ -129,9 +156,8 @@
     </div>
 
     <div class="field">
-      <label>Statut</label>
-      <div class="status-picker" id="f-status"></div>
-      <div class="field-hint" id="f-status-hint" style="display:none;"></div>
+      <label>Étiquette (optionnel)</label>
+      <input type="text" id="f-tag" class="short" placeholder="Ex. Reporté" maxlength="24">
     </div>
 
     <div class="field" id="dep-pending-banner" style="display:none;"></div>
