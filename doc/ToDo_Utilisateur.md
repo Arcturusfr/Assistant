@@ -1,6 +1,6 @@
 <!--
-  ToDo_Utilisateur.md — Version V004a — 2026-10-17 15:45 (heure de Paris)
-  Modifs : V003 validée, sauvegarde JSON faite ; tâches V004a (installer, tester la migration).
+  ToDo_Utilisateur.md — Version V004b — 2026-10-18 00:40 (heure de Paris)
+  Modifs : V004a validée ; tâches V004b (installer, tester la feuille et les nouvelles cartes).
 -->
 # Assistant — Tâches à exécuter par l'utilisateur
 
@@ -10,21 +10,22 @@
 - [x] Décisions de modélisation : complexité, durée, taux d'exécution / statut, dépendances, « Autre », conversion 5→4 niveaux, encodage visuel
 - [x] Décisions urgence (auto / manuelle / héritée), durée Court / Long, icône de catégorie
 - [x] V003 validée sur smartphone ; sauvegarde JSON exportée avant la migration
+- [x] V004a validée (modèle de données v2, migration)
 
-## À faire (V004a)
+## À faire (V004b)
 
-- [ ] Remplacer sur le smartphone et GitHub (arborescence complète) :
+- [ ] Remplacer sur le smartphone et GitHub :
   - `index.html`
-  - `css/sheet.css`
-  - `js/config.js`, `js/storage.js`, `js/state.js`, `js/helpers.js`, `js/matrix.js`, `js/kanban.js`, `js/list.js`, `js/sheet.js`, `js/io.js`, `js/app.js`
-  - **nouveaux fichiers** : `js/schema.js`, `js/calc.js`
-  - inchangés : `css/base.css`, `css/layout.css`, `css/matrix.css`, `css/kanban.css`, `css/list.css`
-- [ ] Ouvrir l'application : un message « Données converties… » doit apparaître **une seule fois**. Vos données de V003 restent sauvegardées en l'état (ne les supprimez pas du navigateur).
-- [ ] Vérifier vos données : mêmes éléments (anciennes tâches = Projets, anciennes sous-tâches = Tâches), statuts cohérents, dépendances conservées.
-- [ ] Tester : matrice (bulles, glisser, poignée), kanban (déplacer une carte ; déplacer un projet qui a du contenu), liste, création d'un projet → tâche → sous-tâche, bouton « Retour » (remonte d'un niveau), export puis import.
-- [ ] Me dire si les bulles (rayons recalés sur 4 niveaux) conviennent
+  - `css/base.css`, `css/kanban.css`, `css/list.css`, `css/sheet.css`
+  - `js/helpers.js`, `js/matrix.js`, `js/kanban.js`, `js/list.js`, `js/sheet.js`, `js/app.js`
+  - inchangés : `css/layout.css`, `css/matrix.css`, `js/config.js`, `js/storage.js`, `js/schema.js`, `js/state.js`, `js/calc.js`, `js/io.js`
+- [ ] Vos données ne changent pas : aucune nouvelle migration (message de conversion absent).
+- [ ] Tester la feuille : boutons faciles à toucher, **défilement vertical sans changement involontaire de valeur** ; urgence Auto / Manuelle (saisir une échéance → Auto proposée) ; interrupteur Bloqué ; durée Court / Long ; taux d'exécution ; domaine (projets) ; étiquette ; date de début.
+- [ ] Tester l'affichage : pastille d'urgence (↑ si héritée), barre de progression, icône de catégorie en coin sur les cartes Kanban, type et domaine dans la Liste, bouton + qui annonce « Ajouter un projet / une tâche / une sous-tâche ».
+- [ ] Matrice : sur une petite bulle (complexité 1), déplacer depuis le centre, redimensionner avec la poignée.
+- [ ] Renseigner le **domaine** de vos projets (tous sont en « Autre » après la migration) et l'**échéance** quand elle existe.
 - [ ] Remplacer dans la base « Contexte » : tous les fichiers ci-dessus + `ARCHITECTURE.md`, `roadmap-et-avancement.md`, `ToDo_Utilisateur.md`
 
-## À trancher avant V004b
+## À trancher avant V005
 
-Rien : tout est décidé. Dès que V004a est validée, on lance V004b (interface complète).
+Rien : tout est décidé. Dès que V004b est validée, on lance V005 (vue Arbre, sans flèches).

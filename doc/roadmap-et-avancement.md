@@ -1,26 +1,26 @@
 <!--
-  roadmap-et-avancement.md — Version V004a — 2026-10-17 15:45 (heure de Paris)
-  Modifs : V003 validée ; V004a (modèle de données v2, migration, export 2.0) livrée ;
-           périmètre de V004b précisé ; limites connues de V004a.
+  roadmap-et-avancement.md — Version V004b — 2026-10-18 00:40 (heure de Paris)
+  Modifs : V004a validée ; V004b (interface complète du modèle v2) livrée ; limites connues mises à jour ;
+           prochaine étape V005 (vue Arbre).
 -->
 # Assistant — Roadmap et avancement
 
-## Où on en est (V004a)
+## Où on en est (V004b)
 
 - [x] V01 : application monofichier (matrice, kanban, liste, sous-tâches, dépendances, export/import JSON)
 - [x] V002 : découpage en modules `css/` (6 fichiers) et `js/` (10 fichiers), scripts classiques ; validée sur ZFold 8 Ultra
 - [x] `ARCHITECTURE.md` créé
 - [x] V003 : correctif des libellés de la matrice — validé sur smartphone
-- [x] V004a : nouveau modèle de données v2 (4 niveaux, Projet › Tâche › Sous-tâche, taux d'exécution, urgence propre / effective), migration automatique, export 2.0, calculs des parents (`js/schema.js`, `js/calc.js`) ; vues adaptées au strict nécessaire — **à valider sur smartphone**
-- [ ] V004b : interface complète du nouveau modèle (voir « Périmètre de V004b »)
+- [x] V004a : nouveau modèle de données v2 (4 niveaux, Projet › Tâche › Sous-tâche, taux d'exécution, urgence propre / effective), migration automatique, export 2.0, calculs des parents (`js/schema.js`, `js/calc.js`) ; vues adaptées au strict nécessaire — validée sur smartphone
+- [x] V004b : interface complète du nouveau modèle (feuille à boutons, urgence Auto / Manuelle avec détail propre / héritée, durée, taux, Bloqué, domaine, étiquette, date de début ; pastille d'urgence et barre de progression ; icône de catégorie en coin ; libellés Projet / Tâche / Sous-tâche ; poignée des petites bulles) — **à valider sur smartphone**
+- [ ] V005 : vue Arbre (voir « Phases proposées »)
 
-## Limites connues de V004a (interface provisoire)
+## Limites connues de V004b
 
-- Pas encore de champ pour saisir : **durée Court / Long**, **taux d'exécution** (le statut de la feuille le règle de façon grossière : À faire = 0, En cours = 2, Fait = 4), **domaine** du projet, **étiquette libre**, **date de début**, **mode d'urgence Auto / Manuelle**. Le moteur est prêt et testé ; l'interface vient en V004b.
-- Les curseurs de la feuille sont toujours des curseurs (sur 4 niveaux) : le remplacement par des boutons est prévu en V004b.
-- Migration : « En cours » devient taux 2 (50 %), tous les Projets ont le domaine « Autre », toutes les urgences sont en mode Manuel.
-- Rayons des bulles recalés sur 4 niveaux (`R_STEP` 11 → 15 dans `config.js`) : à juger sur smartphone.
-- Constat existant (pas nouveau) : sur une bulle de complexité 1, la poignée de redimensionnement recouvre le centre ; pour la déplacer, la saisir par son bord haut-gauche. À traiter en V004b.
+- L'encodage visuel prévu pour la vue Arbre n'est pas encore appliqué : domaine en couleur de fond, complexité en épaisseur de bordure (V005).
+- Le statut n'est plus saisi dans la feuille : il se déduit du taux d'exécution (affiché en indication). Le Kanban reste un moyen rapide de changer le statut d'une feuille.
+- Migration (rappel) : « En cours » est devenu taux 2 (50 %), tous les Projets ont le domaine « Autre » (à renseigner à la main), toutes les urgences sont en mode Manuel.
+- Sur une bulle de complexité 1, la poignée est maintenant décalée vers l'extérieur : la bulle se déplace depuis son centre et se redimensionne depuis la poignée.
 
 ## Anomalies connues
 
@@ -77,10 +77,10 @@ Aucune : toutes les décisions de modélisation sont validées.
 ## Phases proposées
 
 1. ~~V003 — Correctif matrice~~ (livrée, à valider)
-2. ~~**V004a — Modèle de données**~~ (livrée, à valider) : migration 5→4 niveaux (1→1, 2→2, 3→3, 4→3, 5→4), vocabulaire Projet/Tâche/Sous-tâche, calculs (complexité, durée, taux, statut, urgence effective), export 2.0 avec migration douce
-   **V004b — Interface** : voir « Périmètre de V004b »
+2. ~~**V004a — Modèle de données**~~ (livrée et validée) : migration 5→4 niveaux (1→1, 2→2, 3→3, 4→3, 5→4), vocabulaire Projet/Tâche/Sous-tâche, calculs (complexité, durée, taux, statut, urgence effective), export 2.0 avec migration douce
+   ~~**V004b — Interface**~~ (livrée, à valider) : voir « Périmètre de V004b (livré) »
 
-## Périmètre de V004b
+## Périmètre de V004b (livré)
 
 - Feuille : boutons à 4 niveaux (urgence, importance, complexité, taux d'exécution) ne couvrant pas toute la largeur ; durée Court / Long ; interrupteur Bloqué ; étiquette libre ; date de début ; domaine (projets) ; catégorie.
 - Urgence : bascule Auto / Manuelle, valeur proposée depuis l'échéance, détail propre / héritée dans la fiche.
@@ -107,3 +107,4 @@ Aucune : toutes les décisions de modélisation sont validées.
 | V003 | 2026-10-16 | Correctif libellés de la matrice ; décisions de modélisation validées |
 | (docs) | 2026-10-17 | Décisions urgence, durée, catégorie ; V004 scindée en a/b ; exigence ergonomique |
 | V004a | 2026-10-17 | Modèle de données v2, migration automatique, export 2.0, calculs des parents ; V003 validée |
+| V004b | 2026-10-18 | Interface complète du modèle v2 (feuille à boutons, urgence Auto / Manuelle, pastilles, barres de progression, icône de catégorie) ; V004a validée |

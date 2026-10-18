@@ -1,8 +1,7 @@
 <!--
-  ARCHITECTURE.md — Version V004a — 2026-10-17 15:45 (heure de Paris)
-  Modifs : nouveau modèle de données v2 (4 niveaux, Projet › Tâche › Sous-tâche, taux d'exécution,
-           urgence propre / effective), nouveaux fichiers js/schema.js et js/calc.js, nouvel ordre de chargement,
-           clé de stockage v2.
+  ARCHITECTURE.md — Version V004b — 2026-10-18 00:40 (heure de Paris)
+  Modifs : feuille de saisie à sélecteurs à boutons, composants partagés (pastille d'urgence, barre de progression),
+           helpers urgencyPill / progressBar, styles d'urgence dans base.css.
 -->
 # Assistant — Architecture du code
 
@@ -21,12 +20,12 @@ Cible principale : Samsung ZFold 8 Ultra. Test : aperçu local de QEdit (ouvertu
 ```
 index.html          Structure HTML (DOM statique), badge de version, chargement css/js
 css/
-  base.css          Variables (couleurs, rayons, polices), reset, états vides, toast
+  base.css          Variables (couleurs, couleurs d'urgence, rayons, polices), reset, états vides, toast, pastille d'urgence (.urg), barre de progression (.pbar)
   layout.css        Coque de l'app : topbar, navigation, bouton +, vues, bandeau sous-tâches, media queries grand écran
   matrix.css        Vue Matrice (SVG, légende)
   kanban.css        Vue Kanban (colonnes, cartes, tags)
   list.css          Vue Liste (filtres, lignes)
-  sheet.css         Feuille modale d'édition (formulaire, curseurs, dépendances, boutons)
+  sheet.css         Feuille modale d'édition (formulaire, sélecteurs à boutons .seg, bascule Auto/Manuelle, dépendances, boutons)
 js/
   config.js         Crée window.App ; constantes (niveaux, types, catégories, domaines, statuts, seuils d'urgence, dimensions matrice)
   storage.js        Lecture/écriture localStorage (+ lecture seule de l'ancienne clé v1)
@@ -59,7 +58,7 @@ Les appels entre vues (ex. `App.sheet.open`, `App.renderAll`) se font **à l'ex�
 | `App.state` | state.js | `tasks`, `currentView`, `editingId`, `listFilter`, `activeParentId`, `migratedFromV1` |
 | `App.model` | state.js | `uid`, `persist`, `findTask`, `childrenOf`, `descendantsOf`, `ancestorsOf`, `depthOf`, `scopedTasks`, `subtaskCount`, `subtaskDoneCount`, `enterSubtasks`, `exitSubtasks`, `unmetDependencies`, `isBlockedByDeps`, `wouldCreateCycle`, `canDependOn` |
 | `App.calc` | calc.js | `isLeaf`, `effectiveComplexity`, `effectiveDuration`, `progressRatio`, `effectiveProgress`, `isDone`, `statusOf`, `columnOf`, `applyColumn`, `urgencyFromDue`, `ownUrgency`, `effectiveUrgency`, `isUrgencyInherited`, `scoreOf`, `typeAtDepth`, `typeOf`, `contextDepth` |
-| `App.helpers` | helpers.js | `initViewportFix`, `daysUntil`, `dueLabel`, `scoreOf`, `toast(msg, ms?)`, `escapeHtml`, `shade` |
+| `App.helpers` | helpers.js | `initViewportFix`, `daysUntil`, `dueLabel`, `scoreOf`, `toast(msg, ms?)`, `escapeHtml`, `shade`, `urgencyPill(u, inherited)`, `progressBar(level)` |
 | `App.matrix` | matrix.js | `init`, `render`, `maybeShowEmpty` |
 | `App.kanban` | kanban.js | `render` |
 | `App.list` | list.js | `render`, `renderFilters` |
@@ -117,6 +116,8 @@ Fichier d'export : `{ app:"assistant", version:"2.0", schema:2, exportedAt, task
 - **Matrice** : x = urgence effective, y = importance, rayon = complexité effective. Glisser = urgence/importance (horizontal bloqué si l'urgence est héritée ; une urgence auto glissée passe en manuel), poignée = complexité (bloquée pour un parent), tap = ouvrir la feuille. Les éléments terminés n'y apparaissent pas. Les doublons exacts sont répartis en cercle.
 - **Kanban** : colonnes = `columnOf`. Déplacer une feuille change son taux ; déplacer un parent ne change que son indicateur Bloqué.
 - **Score** = urgence effective × importance (tri Kanban et Liste).
+- **Feuille de saisie** (`sheet.js`) : un objet `form` porte l'état pendant l'édition (rien n'est écrit avant « Enregistrer »). Les niveaux se règlent par boutons (`buildSeg`) qui n'agissent qu'au tap ; le statut n'est plus saisi (déduit du taux, affiché en indication). L'urgence a un mode Auto (valeur calculée depuis l'échéance, boutons verrouillés) ou Manuelle (la valeur calculée sert de point de départ) ; saisir une échéance sans avoir touché à l'urgence propose Auto. Taux, complexité et durée d'un parent sont affichés calculés (non modifiables) ; seul « Bloqué » reste modifiable. Le domaine n'est proposé que pour un Projet.
+- **Affichage des cartes / lignes** : pastille d'urgence effective (« ↑ » si héritée), barre de progression à 4 segments + valeur, icône de catégorie dans un coin (Kanban), type et domaine (Liste), « Long » et étiquette libre.
 - **Suppression** : supprime l'élément et tout son contenu, et nettoie les dépendances orphelines.
 
 ## 7. Flux de rendu
