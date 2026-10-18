@@ -1,0 +1,61 @@
+/* ==========================================================================
+   Assistant — css/tree.css
+   Version : V005 — 2026-10-18 15:16 (heure de Paris)
+   Modifs  : Nouveau fichier. Vue Arbre : cartes pastel par domaine, épaisseur de bordure =
+             complexité, traits hiérarchiques, accordéon, barre d'outils et légende.
+   ========================================================================== */
+
+.tree-toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+.tbtn{
+  padding:8px 14px; border-radius:100px; border:1px solid var(--border); background:var(--surface);
+  font-size:12.5px; font-weight:700; color:var(--ink-2); cursor:pointer;
+}
+.tbtn:active{background:var(--surface-2);}
+
+.tree, .tchildren{list-style:none; margin:0; padding:0;}
+.tchildren{margin-left:14px; padding-left:16px;}
+.tli{position:relative; padding-top:8px;}
+/* Traits hiérarchiques : vertical (::after) + horizontal vers la carte (::before) */
+.tchildren > .tli::before{content:""; position:absolute; left:-16px; top:32px; width:16px; border-top:2px solid var(--border);}
+.tchildren > .tli::after{content:""; position:absolute; left:-16px; top:0; bottom:0; border-left:2px solid var(--border);}
+.tchildren > .tli:last-child::after{bottom:auto; height:32px;}
+
+/* Domaines : fond pastel + trait plus foncé (la bordure reste lisible sur le fond) */
+.dom-maison{--dom-bg:#E3EBFD; --dom-line:#5F82DC;}
+.dom-administratif{--dom-bg:#EEE3FA; --dom-line:#9A6BD0;}
+.dom-loisirs{--dom-bg:#FFEBD8; --dom-line:#DE8D4C;}
+.dom-famille{--dom-bg:#DDF3EA; --dom-line:#3FAE85;}
+.dom-autre{--dom-bg:#E9ECF1; --dom-line:#7C8699;}
+
+.tnode{
+  display:flex; align-items:flex-start; gap:6px; padding:9px 9px 9px 4px;
+  background:var(--dom-bg); border:1px solid var(--dom-line); border-radius:var(--radius-s); cursor:pointer;
+}
+/* Complexité effective -> épaisseur de bordure */
+.tnode.cx1{border-width:1px;}
+.tnode.cx2{border-width:2px;}
+.tnode.cx3{border-width:3px;}
+.tnode.cx4{border-width:5px;}
+.tnode.done{opacity:0.6;}
+.tnode.is-blocked{opacity:0.8;}
+
+.t-toggle, .t-spacer{flex:0 0 28px; width:28px; height:28px;}
+.t-toggle{
+  border:none; background:transparent; color:var(--ink-2); font-size:15px; cursor:pointer;
+  border-radius:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.15s;
+}
+.t-toggle[aria-expanded="true"]{transform:rotate(90deg);}
+.t-body{flex:1; min-width:0;}
+.t-title{font-size:14px; font-weight:700; line-height:1.25; overflow-wrap:anywhere;}
+.t-meta{display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:6px;}
+.t-type{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-2);}
+.t-prog{margin-top:7px;}
+.t-side{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:6px;}
+.t-cat{width:24px; height:24px; border-radius:8px; background:rgba(255,255,255,0.7); display:flex; align-items:center; justify-content:center; font-size:13px;}
+.t-add{
+  width:28px; height:28px; border-radius:50%; border:1px solid var(--dom-line); background:rgba(255,255,255,0.8);
+  color:var(--ink); font-size:16px; line-height:1; font-weight:700; cursor:pointer; padding:0;
+}
+
+.tlegend{display:flex; flex-wrap:wrap; gap:6px 12px; margin:16px 2px 0; font-size:11.5px; color:var(--ink-2); align-items:center;}
+.tlegend .sw{display:inline-block; width:12px; height:12px; border-radius:4px; vertical-align:-1px; margin-right:5px; background:var(--dom-bg); border:2px solid var(--dom-line);}
