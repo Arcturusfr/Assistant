@@ -1,7 +1,7 @@
 /* ==========================================================================
    Assistant — js/app.js
-   Version : V004b — 2026-10-18 00:40 (heure de Paris)
-   Modifs  : Le bouton + annonce l'élément à créer (projet / tâche / sous-tâche) selon le niveau affiché.
+   Version : V005 — 2026-10-18 15:16 (heure de Paris)
+   Modifs  : renderAll rend aussi la vue Arbre (App.tree.render).
    Dépend de : tous les autres fichiers js — à charger en dernier.
    ========================================================================== */
 (function(){
@@ -29,6 +29,7 @@
     App.kanban.render();
     App.list.renderFilters();
     App.list.render();
+    App.tree.render();
   }
   App.renderAll = renderAll;
 
