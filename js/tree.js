@@ -1,10 +1,9 @@
 /* ==========================================================================
    Assistant — js/tree.js
-   Version : V006 — 2026-10-18 21:54 (heure de Paris)
-   Modifs  : Flèches de dépendance (SVG superposé) : de l'élément dont on dépend vers celui qui attend,
-             en pointillés, tracées dans une gouttière à droite ; orange tant que la dépendance n'est
-             pas terminée. Branche repliée : la flèche rejoint le parent visible (regroupement, trait
-             en points). Bouton « Dépendances » pour les afficher / masquer.
+   Version : V007 — 2026-10-19 12:35 (heure de Paris)
+   Modifs  : Flèches : départ dans le tiers inférieur du côté droit du rectangle, arrivée dans le tiers
+             supérieur (plusieurs flèches = réparties dans le tiers) ; couloirs attribués pour limiter
+             les croisements. Bouton plier / déplier : triangle dessiné en CSS (plus grand). Légende mise à jour.
    Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet / App.renderAll à l'exécution)
    ========================================================================== */
 (function(){
@@ -20,6 +19,7 @@
   let seeded = false;                         // premier rendu : les projets sont dépliés
 
   const root = document.getElementById('tree-root');
+  const LANES = 6, LANE_START = 9, LANE_GAP = 7;   // couloirs des flèches (gouttière à droite)
   let showDeps = true;                        // flèches affichées (état en mémoire, non stocké)
 
   /* ---------- Flèches de dépendance ---------- */
@@ -50,6 +50,42 @@
     }));
     if(!pairs.size) return;
     const base = root.getBoundingClientRect();
+    const list = [];
+    pairs.forEach(p => {
+      const a = root.querySelector(`.tnode[data-id="${p.from}"]`), b = root.querySelector(`.tnode[data-id="${p.to}"]`);
+      if(!a || !b) return;
+      p.ra = a.getBoundingClientRect(); p.rb = b.getBoundingClientRect();
+      list.push(p);
+    });
+    if(!list.length) return;
+
+    /* Points d'attache sur le bord droit : départ (l'élément dont on dépend) dans le tiers inférieur,
+       arrivée (l'élément qui attend) dans le tiers supérieur. Plusieurs flèches sur un même tiers :
+       réparties régulièrement, dans l'ordre de position de l'autre extrémité (moins de croisements). */
+    const outs = new Map(), ins = new Map();
+    const push = (m, k, p) => { if(!m.has(k)) m.set(k, []); m.get(k).push(p); };
+    list.forEach(p => { push(outs, p.from, p); push(ins, p.to, p); });
+    const midY = r => r.top + r.height / 2;
+    outs.forEach(arr => {
+      arr.sort((p, q) => midY(p.rb) - midY(q.rb));
+      arr.forEach((p, k) => { const r = p.ra; p.y1 = r.top - base.top + r.height * (2/3 + (k + 0.5) / arr.length / 3); });
+    });
+    ins.forEach(arr => {
+      arr.sort((p, q) => midY(p.ra) - midY(q.ra));
+      arr.forEach((p, k) => { const r = p.rb; p.y2 = r.top - base.top + r.height * ((k + 0.5) / arr.length / 3); });
+    });
+
+    /* Couloirs : les flèches courtes en premier (couloirs proches), chacune dans le premier couloir
+       où son tronçon vertical ne chevauche aucun autre. */
+    const lanes = Array.from({length:LANES}, () => []);
+    list.slice().sort((p, q) => Math.abs(p.y2 - p.y1) - Math.abs(q.y2 - q.y1)).forEach((p, n) => {
+      const lo = Math.min(p.y1, p.y2) - 4, hi = Math.max(p.y1, p.y2) + 4;
+      let lane = lanes.findIndex(L => L.every(s => hi < s.lo || lo > s.hi));
+      if(lane < 0) lane = n % LANES;
+      lanes[lane].push({ lo, hi });
+      p.lane = lane;
+    });
+
     const svg = svgEl('svg', { class:'tdeps', width:base.width, height:root.scrollHeight });
     const defs = svgEl('defs', {});
     [['unmet','#F0631E'], ['met','#8991A3']].forEach(([k,c]) => {
@@ -58,17 +94,12 @@
       defs.appendChild(m);
     });
     svg.appendChild(defs);
-    let i = 0;
-    pairs.forEach(p => {
-      const a = root.querySelector(`.tnode[data-id="${p.from}"]`), b = root.querySelector(`.tnode[data-id="${p.to}"]`);
-      if(!a || !b) return;
-      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-      const x1 = ra.right - base.left, y1 = ra.top + ra.height/2 - base.top;
-      const x2 = rb.right - base.left, y2 = rb.top + rb.height/2 - base.top;
-      const gx = x1 + 7 + (i++ % 4) * 6;             // 4 couloirs pour limiter les chevauchements
+    list.forEach(p => {
+      const x1 = p.ra.right - base.left, x2 = p.rb.right - base.left;
+      const gx = Math.max(x1, x2) + LANE_START + p.lane * LANE_GAP;
       const k = p.unmet ? 'unmet' : 'met';
       svg.appendChild(svgEl('path', {
-        d:`M${x1},${y1} H${gx} V${y2} H${x2}`, fill:'none', class:'tdep ' + k + (p.grouped ? ' grouped' : ''),
+        d:`M${x1},${p.y1} H${gx} V${p.y2} H${x2}`, fill:'none', class:'tdep ' + k + (p.grouped ? ' grouped' : ''),
         'marker-end':`url(#tdep-${k})`
       }));
     });
@@ -103,7 +134,7 @@
     const head = `
       <div class="tnode dom-${dom} cx${cx} ${done ? 'done' : ''} ${t.blocked ? 'is-blocked' : ''}" data-id="${t.id}" title="Complexité ${cx}">
         ${kids.length
-          ? `<button type="button" class="t-toggle" data-act="toggle" aria-expanded="${open}" aria-label="Déplier / replier">▸</button>`
+          ? `<button type="button" class="t-toggle" data-act="toggle" aria-expanded="${open}" aria-label="Déplier / replier"></button>`
           : `<span class="t-spacer"></span>`}
         <div class="t-body">
           <div class="t-title">${escapeHtml(t.title)}</div>
@@ -150,7 +181,7 @@
     document.getElementById('tree-legend').innerHTML =
       Object.entries(DOMAINS).map(([k, d]) => `<span class="dom-${k}"><i class="sw"></i>${d.label}</span>`).join('') +
       `<span>Bordure épaisse = complexité élevée</span>` +
-      `<span><svg class="tl-arrow" width="34" height="10"><path d="M1,5 H28" class="tdep unmet"/><path d="M26,1 L33,5 L26,9 z" fill="#F0631E"/></svg>attend la fin de l'autre (grisé : terminé ; en points : branche repliée)</span>`;
+      `<span><svg class="tl-arrow" width="34" height="10"><path d="M1,5 H28" class="tdep unmet"/><path d="M26,1 L33,5 L26,9 z" fill="#F0631E"/></svg>attend la fin de l'autre : part du bas, arrive en haut du côté droit (grisé : terminé ; en points : branche repliée)</span>`;
   }
 
   /* ---------- Interactions (délégation : le contenu est reconstruit à chaque rendu) ---------- */
