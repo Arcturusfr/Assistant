@@ -1,6 +1,6 @@
 <!--
-  ToDo_Utilisateur.md — Version V005 — 2026-10-18 15:16 (heure de Paris)
-  Modifs : V004b validée ; tâches V005 (installer la vue Arbre et la tester).
+  ToDo_Utilisateur.md — Version V006 — 2026-10-18 21:54 (heure de Paris)
+  Modifs : V005 validée ; tâches V006 (installer les flèches de dépendance et les tester).
 -->
 # Assistant — Tâches à exécuter par l'utilisateur
 
@@ -11,19 +11,19 @@
 - [x] V003 validée ; sauvegarde JSON exportée avant la migration
 - [x] V004a validée (modèle de données v2, migration)
 - [x] V004b validée (feuille à boutons, pastilles d'urgence, barres de progression)
+- [x] V005 validée (vue Arbre) ; point « zoom après + » reporté après V006 (avec V008)
 
-## À faire (V005)
+## À faire (V006)
 
 - [ ] Ajouter / remplacer sur le smartphone et GitHub :
-  - nouveaux : `css/tree.css`, `js/tree.js`
-  - modifiés : `index.html`, `js/app.js`
+  - modifiés : `index.html`, `js/tree.js`, `css/tree.css`
   - inchangés : tous les autres fichiers
 - [ ] Vos données ne changent pas (aucune migration).
-- [ ] Tester l'onglet **Arbre** : projets dépliés au départ ; flèche pour déplier / replier ; « Tout déplier / Tout replier » ; touche sur une carte = ouvre la feuille ; bouton **+** d'une carte = ajoute une tâche (ou sous-tâche) dedans.
-- [ ] Vérifier la lisibilité : couleur de fond = domaine du projet, **épaisseur de bordure = complexité**, pastille d'urgence (↑ si héritée), barre de progression, icône de catégorie en coin. Les bordures épaisses restent-elles lisibles sur le fond pastel ?
-- [ ] Après un **+**, l'application est « zoomée » dans l'élément (bandeau « ← Retour ») pour la Matrice, le Kanban et la Liste : est-ce gênant ? (l'Arbre, lui, affiche toujours tout)
+- [ ] Tester l'onglet **Arbre** avec quelques dépendances (champ « Dépend de » d'une feuille) : une flèche part de l'élément dont on dépend vers celui qui attend ; **orange** tant que la dépendance n'est pas terminée, **grise** une fois terminée.
+- [ ] Replier une branche contenant un élément lié : la flèche doit rejoindre le parent replié (trait **en points**). Replier / déplier, « Tout replier », rotation de l'écran : les flèches suivent-elles ?
+- [ ] Bouton **Dépendances** : masque / affiche les flèches. Les flèches (couloir à droite) restent-elles lisibles avec vos vraies données ?
 - [ ] Remplacer dans la base « Contexte » : les fichiers ci-dessus + `ARCHITECTURE.md`, `roadmap-et-avancement.md`, `ToDo_Utilisateur.md`
 
-## À trancher avant V006
+## À trancher avant V007
 
-Rien pour l'instant. À signaler après test : couleurs des domaines, épaisseurs de bordure, comportement du bouton +.
+Rien pour l'instant. À signaler après test : lisibilité des flèches, sens de lecture (de la dépendance vers l'élément qui attend), couleurs.

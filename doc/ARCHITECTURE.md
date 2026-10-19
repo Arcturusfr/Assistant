@@ -1,6 +1,6 @@
 <!--
-  ARCHITECTURE.md — Version V005 — 2026-10-18 15:16 (heure de Paris)
-  Modifs : vue Arbre (css/tree.css, js/tree.js, App.tree), chargement et flux de rendu mis à jour.
+  ARCHITECTURE.md — Version V006 — 2026-10-18 21:54 (heure de Paris)
+  Modifs : vue Arbre : flèches de dépendance (SVG superposé, bouton « Dépendances »).
 -->
 # Assistant — Architecture du code
 
@@ -24,7 +24,7 @@ css/
   matrix.css        Vue Matrice (SVG, légende)
   kanban.css        Vue Kanban (colonnes, cartes, tags)
   list.css          Vue Liste (filtres, lignes)
-  tree.css          Vue Arbre (cartes par domaine, épaisseur de bordure = complexité, traits hiérarchiques, légende)
+  tree.css          Vue Arbre (cartes par domaine, épaisseur de bordure = complexité, traits hiérarchiques, flèches de dépendance, légende)
   sheet.css         Feuille modale d'édition (formulaire, sélecteurs à boutons .seg, bascule Auto/Manuelle, dépendances, boutons)
 js/
   config.js         Crée window.App ; constantes (niveaux, types, catégories, domaines, statuts, seuils d'urgence, dimensions matrice)
@@ -36,7 +36,7 @@ js/
   matrix.js         Vue Matrice : rendu SVG, glisser/redimensionner, état vide
   kanban.js         Vue Kanban : colonnes, cartes, glisser-déposer
   list.js           Vue Liste : filtres, lignes triées par score
-  tree.js           Vue Arbre : accordéon, cartes encodées, bouton + par carte
+  tree.js           Vue Arbre : accordéon, cartes encodées, bouton + par carte, flèches de dépendance
   sheet.js          Feuille de création/édition, dépendances, sous-tâches, enregistrer/supprimer
   io.js             Export / import JSON
   app.js            Point d'entrée : navigation, rendu global (App.renderAll), initialisation
@@ -116,7 +116,7 @@ Fichier d'export : `{ app:"assistant", version:"2.0", schema:2, exportedAt, task
 - **Urgence** : propre (saisie, ou calculée depuis l'échéance en mode auto : ≤ 1 j → 4, ≤ 7 j → 3, ≤ 30 j → 2, sinon 1) ; **effective** d'un parent = `max(propre, effective des enfants non terminés)`. Un élément terminé n'a plus d'urgence.
 - **Dépendances** : plusieurs, entre niveaux et branches ; interdites vers soi-même, son parent / ancêtres, ses descendants, et en cycle (`canDependOn`).
 - **Matrice** : x = urgence effective, y = importance, rayon = complexité effective. Glisser = urgence/importance (horizontal bloqué si l'urgence est héritée ; une urgence auto glissée passe en manuel), poignée = complexité (bloquée pour un parent), tap = ouvrir la feuille. Les éléments terminés n'y apparaissent pas. Les doublons exacts sont répartis en cercle.
-- **Arbre** (V005) : affiche tout l'arbre (ignore `activeParentId`), triée par score ; projets dépliés au premier rendu (état d'accordéon en mémoire, non stocké). Fond pastel = domaine du projet racine ; épaisseur de bordure = complexité effective (1 / 2 / 3 / 5 px) ; pastille d'urgence, barre de progression, icône de catégorie. Le bouton + d'une carte fixe `activeParentId` sur elle puis ouvre la feuille de création. Pas de flèches de dépendance (V006).
+- **Arbre** (V005, flèches V006) : affiche tout l'arbre (ignore `activeParentId`), triée par score ; projets dépliés au premier rendu (état d'accordéon en mémoire, non stocké). Fond pastel = domaine du projet racine ; épaisseur de bordure = complexité effective (1 / 2 / 3 / 5 px) ; pastille d'urgence, barre de progression, icône de catégorie. Le bouton + d'une carte fixe `activeParentId` sur elle puis ouvre la feuille de création. **Flèches de dépendance (V006)** : un SVG (`svg.tdeps`) superposé à `#tree-root` est redessiné à chaque rendu et au redimensionnement ; une flèche part de l'élément dont on dépend vers celui qui attend, en pointillés, par une gouttière à droite (4 couloirs). Orange = dépendance non terminée, grise = terminée. Branche repliée : l'extrémité se reporte sur le plus haut ancêtre replié visible (trait en points) ; les flèches identiques sont fusionnées. Le bouton « Dépendances » les masque / affiche (état en mémoire).
 - **Kanban** : colonnes = `columnOf`. Déplacer une feuille change son taux ; déplacer un parent ne change que son indicateur Bloqué.
 - **Score** = urgence effective × importance (tri Kanban et Liste).
 - **Feuille de saisie** (`sheet.js`) : un objet `form` porte l'état pendant l'édition (rien n'est écrit avant « Enregistrer »). Les niveaux se règlent par boutons (`buildSeg`) qui n'agissent qu'au tap ; le statut n'est plus saisi (déduit du taux, affiché en indication). L'urgence a un mode Auto (valeur calculée depuis l'échéance, boutons verrouillés) ou Manuelle (la valeur calculée sert de point de départ) ; saisir une échéance sans avoir touché à l'urgence propose Auto. Taux, complexité et durée d'un parent sont affichés calculés (non modifiables) ; seul « Bloqué » reste modifiable. Le domaine n'est proposé que pour un Projet.
