@@ -1,10 +1,10 @@
 /* ==========================================================================
    Assistant — js/tree.js
-   Version : V005 — 2026-10-18 15:16 (heure de Paris)
-   Modifs  : Nouveau fichier. Vue Arbre (sans flèches de dépendance) : tout l'arbre Projet › Tâche ›
-             Sous-tâche, accordéon, couleur de fond = domaine du projet racine, épaisseur de
-             bordure = complexité effective, pastille d'urgence, barre de progression, icône
-             de catégorie, bouton + pour ajouter un enfant. L'arbre ignore le « zoom » des autres vues.
+   Version : V006 — 2026-10-18 21:54 (heure de Paris)
+   Modifs  : Flèches de dépendance (SVG superposé) : de l'élément dont on dépend vers celui qui attend,
+             en pointillés, tracées dans une gouttière à droite ; orange tant que la dépendance n'est
+             pas terminée. Branche repliée : la flèche rejoint le parent visible (regroupement, trait
+             en points). Bouton « Dépendances » pour les afficher / masquer.
    Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet / App.renderAll à l'exécution)
    ========================================================================== */
 (function(){
@@ -20,6 +20,65 @@
   let seeded = false;                         // premier rendu : les projets sont dépliés
 
   const root = document.getElementById('tree-root');
+  let showDeps = true;                        // flèches affichées (état en mémoire, non stocké)
+
+  /* ---------- Flèches de dépendance ---------- */
+  // Élément réellement visible qui représente id : lui-même, ou son plus haut ancêtre replié
+  function visibleId(id){
+    const chain = ancestorsOf(id).map(a => a.id).reverse();   // racine … parent
+    for(const a of chain){ if(!expanded.has(a)) return a; }
+    return id;
+  }
+  function svgEl(tag, attrs){
+    const el = document.createElementNS(App.config.SVG_NS, tag);
+    for(const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+  function drawArrows(){
+    if(!showDeps || !root.offsetParent) return;
+    const pairs = new Map();
+    state.tasks.forEach(t => (t.dependsOn || []).forEach(depId => {
+      const dep = findTask(depId);
+      if(!dep) return;
+      const from = visibleId(depId), to = visibleId(t.id);
+      if(from === to) return;
+      const key = from + '>' + to;
+      const p = pairs.get(key) || { from, to, unmet:false, grouped:false };
+      if(!calc.isDone(dep)) p.unmet = true;
+      if(from !== depId || to !== t.id) p.grouped = true;
+      pairs.set(key, p);
+    }));
+    if(!pairs.size) return;
+    const base = root.getBoundingClientRect();
+    const svg = svgEl('svg', { class:'tdeps', width:base.width, height:root.scrollHeight });
+    const defs = svgEl('defs', {});
+    [['unmet','#F0631E'], ['met','#8991A3']].forEach(([k,c]) => {
+      const m = svgEl('marker', { id:'tdep-'+k, viewBox:'0 0 10 10', refX:9, refY:5, markerWidth:7, markerHeight:7, orient:'auto' });
+      m.appendChild(svgEl('path', { d:'M0,0 L10,5 L0,10 z', fill:c }));
+      defs.appendChild(m);
+    });
+    svg.appendChild(defs);
+    let i = 0;
+    pairs.forEach(p => {
+      const a = root.querySelector(`.tnode[data-id="${p.from}"]`), b = root.querySelector(`.tnode[data-id="${p.to}"]`);
+      if(!a || !b) return;
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const x1 = ra.right - base.left, y1 = ra.top + ra.height/2 - base.top;
+      const x2 = rb.right - base.left, y2 = rb.top + rb.height/2 - base.top;
+      const gx = x1 + 7 + (i++ % 4) * 6;             // 4 couloirs pour limiter les chevauchements
+      const k = p.unmet ? 'unmet' : 'met';
+      svg.appendChild(svgEl('path', {
+        d:`M${x1},${y1} H${gx} V${y2} H${x2}`, fill:'none', class:'tdep ' + k + (p.grouped ? ' grouped' : ''),
+        'marker-end':`url(#tdep-${k})`
+      }));
+    });
+    root.appendChild(svg);
+  }
+  let rafId = 0;
+  function scheduleArrows(){
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => { const old = root.querySelector('svg.tdeps'); if(old) old.remove(); drawArrows(); });
+  }
 
   function domainOf(t){
     const anc = ancestorsOf(t.id);
@@ -82,13 +141,16 @@
       root.innerHTML = `<div class="empty-state"><span class="ic">🌳</span><strong>Aucun projet pour l'instant</strong><span>Ajoutez-en un avec le bouton +</span></div>`;
       return;
     }
+    root.classList.toggle('with-deps', showDeps);
     root.innerHTML = `<ul class="tree">${roots.map(r => nodeHtml(r, 0)).join('')}</ul>`;
+    drawArrows();
   }
 
   function renderLegend(){
     document.getElementById('tree-legend').innerHTML =
       Object.entries(DOMAINS).map(([k, d]) => `<span class="dom-${k}"><i class="sw"></i>${d.label}</span>`).join('') +
-      `<span>Bordure épaisse = complexité élevée</span>`;
+      `<span>Bordure épaisse = complexité élevée</span>` +
+      `<span><svg class="tl-arrow" width="34" height="10"><path d="M1,5 H28" class="tdep unmet"/><path d="M26,1 L33,5 L26,9 z" fill="#F0631E"/></svg>attend la fin de l'autre (grisé : terminé ; en points : branche repliée)</span>`;
   }
 
   /* ---------- Interactions (délégation : le contenu est reconstruit à chaque rendu) ---------- */
@@ -120,6 +182,15 @@
     expanded.clear();
     render();
   });
+
+  document.getElementById('tree-deps').addEventListener('click', (ev)=>{
+    showDeps = !showDeps;
+    ev.currentTarget.setAttribute('aria-pressed', showDeps ? 'true' : 'false');
+    ev.currentTarget.classList.toggle('on', showDeps);
+    render();
+  });
+  window.addEventListener('resize', scheduleArrows);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleArrows);
 
   renderLegend();
   App.tree = { render };
