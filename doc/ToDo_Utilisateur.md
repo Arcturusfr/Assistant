@@ -1,6 +1,6 @@
 <!--
-  ToDo_Utilisateur.md — Version V006 — 2026-10-18 21:54 (heure de Paris)
-  Modifs : V005 validée ; tâches V006 (installer les flèches de dépendance et les tester).
+  ToDo_Utilisateur.md — Version V007 — 2026-10-19 12:50 (heure de Paris)
+  Modifs : V006 validée ; tâches V007 (ergonomie de l'Arbre).
 -->
 # Assistant — Tâches à exécuter par l'utilisateur
 
@@ -11,19 +11,21 @@
 - [x] V003 validée ; sauvegarde JSON exportée avant la migration
 - [x] V004a validée (modèle de données v2, migration)
 - [x] V004b validée (feuille à boutons, pastilles d'urgence, barres de progression)
-- [x] V005 validée (vue Arbre) ; point « zoom après + » reporté après V006 (avec V008)
+- [x] V005 validée (vue Arbre) ; point « zoom après + » reporté (avec V009)
+- [x] V006 validée (flèches de dépendance dans l'Arbre)
 
-## À faire (V006)
+## À faire (V007)
 
 - [ ] Ajouter / remplacer sur le smartphone et GitHub :
-  - modifiés : `index.html`, `js/tree.js`, `css/tree.css`
+  - modifiés : `index.html`, `js/tree.js`, `css/tree.css`, `css/base.css`
   - inchangés : tous les autres fichiers
 - [ ] Vos données ne changent pas (aucune migration).
-- [ ] Tester l'onglet **Arbre** avec quelques dépendances (champ « Dépend de » d'une feuille) : une flèche part de l'élément dont on dépend vers celui qui attend ; **orange** tant que la dépendance n'est pas terminée, **grise** une fois terminée.
-- [ ] Replier une branche contenant un élément lié : la flèche doit rejoindre le parent replié (trait **en points**). Replier / déplier, « Tout replier », rotation de l'écran : les flèches suivent-elles ?
-- [ ] Bouton **Dépendances** : masque / affiche les flèches. Les flèches (couloir à droite) restent-elles lisibles avec vos vraies données ?
+- [ ] Onglet **Arbre** : les triangles plier / déplier sont-ils assez grands et faciles à toucher ?
+- [ ] Les flèches partent-elles bien du **bas** du côté droit de l'élément dont on dépend et arrivent-elles en **haut** du côté droit de l'élément qui attend ? Plusieurs flèches sur un même rectangle sont-elles bien séparées ?
+- [ ] Largeur des rectangles : −25 % écran déplié, −8 % écran plié. Convient-elle (à ajuster si besoin) ?
+- [ ] Barres grises de progression (visibles aussi dans le Kanban et la Liste) : assez contrastées ? Les barres bleues et vertes n'ont pas changé.
 - [ ] Remplacer dans la base « Contexte » : les fichiers ci-dessus + `ARCHITECTURE.md`, `roadmap-et-avancement.md`, `ToDo_Utilisateur.md`
 
-## À trancher avant V007
+## À trancher avant V008
 
-Rien pour l'instant. À signaler après test : lisibilité des flèches, sens de lecture (de la dépendance vers l'élément qui attend), couleurs.
+Rien pour l'instant. À signaler après test : lisibilité des flèches, sens départ / arrivée (bas / haut), largeur des rectangles.
