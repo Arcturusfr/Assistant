@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — css/tree.css
-   Version : V005 — 2026-10-18 15:16 (heure de Paris)
-   Modifs  : Nouveau fichier. Vue Arbre : cartes pastel par domaine, épaisseur de bordure =
-             complexité, traits hiérarchiques, accordéon, barre d'outils et légende.
+   Version : V006 — 2026-10-18 21:54 (heure de Paris)
+   Modifs  : Flèches de dépendance : gouttière à droite, tracé en pointillés (orange = en attente,
+             gris = terminée, points = branche repliée), bouton « Dépendances ».
    ========================================================================== */
 
 .tree-toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
@@ -59,3 +59,14 @@
 
 .tlegend{display:flex; flex-wrap:wrap; gap:6px 12px; margin:16px 2px 0; font-size:11.5px; color:var(--ink-2); align-items:center;}
 .tlegend .sw{display:inline-block; width:12px; height:12px; border-radius:4px; vertical-align:-1px; margin-right:5px; background:var(--dom-bg); border:2px solid var(--dom-line);}
+
+/* ---------- Flèches de dépendance (V006) ---------- */
+#tree-root{position:relative;}
+#tree-root.with-deps{padding-right:34px;}
+svg.tdeps{position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:2;}
+.tdep{stroke-width:2; stroke-linejoin:round; stroke-dasharray:6 4;}
+.tdep.unmet{stroke:var(--warn);}
+.tdep.met{stroke:var(--ink-3); opacity:0.7;}
+.tdep.grouped{stroke-dasharray:1.5 4; stroke-linecap:round;}
+.tbtn.on{background:var(--ink); color:#fff; border-color:var(--ink);}
+.tl-arrow{vertical-align:middle; margin-right:6px; overflow:visible;}
