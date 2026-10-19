@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — css/base.css
-   Version : V004b — 2026-10-18 00:40 (heure de Paris)
-   Modifs  : Couleurs d'urgence (--u1..--u4) ; composants partagés : pastille d'urgence (.urg)
-             et barre de progression à 4 segments (.pbar).
+   Version : V007 — 2026-10-19 12:35 (heure de Paris)
+   Modifs  : Segments gris (non atteints) de la barre de progression plus foncés + liseré ;
+             segments bleus et verts inchangés.
    ========================================================================== */
 
 :root{
@@ -94,7 +94,7 @@ button{font-family:inherit;}
 
 /* ---------- Barre de progression à 4 segments + valeur ---------- */
 .pbar{display:inline-flex; align-items:center; gap:3px;}
-.pbar i{display:block; width:14px; height:6px; border-radius:2px; background:var(--border);}
-.pbar i.on{background:var(--brand);}
+.pbar i{display:block; width:14px; height:6px; border-radius:2px; background:#B3BBCA; box-shadow:inset 0 0 0 1px rgba(18,21,28,0.22);}
+.pbar i.on{background:var(--brand); box-shadow:none;}
 .pbar.lv4 i.on{background:var(--ok);}
 .pbar-val{margin-left:5px; font-size:10.5px; font-weight:700; color:var(--ink-2); font-style:normal;}

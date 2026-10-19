@@ -1,8 +1,8 @@
 /* ==========================================================================
    Assistant — css/tree.css
-   Version : V006 — 2026-10-18 21:54 (heure de Paris)
-   Modifs  : Flèches de dépendance : gouttière à droite, tracé en pointillés (orange = en attente,
-             gris = terminée, points = branche repliée), bouton « Dépendances ».
+   Version : V007 — 2026-10-19 12:35 (heure de Paris)
+   Modifs  : Triangle plier / déplier agrandi (dessiné en CSS) ; rectangles moins larges (75 % déplié,
+             92 % plié) pour laisser de la place aux flèches ; réserve à droite permanente.
    ========================================================================== */
 
 .tree-toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
@@ -39,11 +39,13 @@
 .tnode.done{opacity:0.6;}
 .tnode.is-blocked{opacity:0.8;}
 
-.t-toggle, .t-spacer{flex:0 0 28px; width:28px; height:28px;}
+.t-toggle, .t-spacer{flex:0 0 38px; width:38px; height:38px;}
 .t-toggle{
-  border:none; background:transparent; color:var(--ink-2); font-size:15px; cursor:pointer;
-  border-radius:8px; display:flex; align-items:center; justify-content:center; transition:transform 0.15s;
+  border:none; padding:0; background:rgba(255,255,255,0.65); color:var(--ink); cursor:pointer;
+  border-radius:10px; display:flex; align-items:center; justify-content:center; transition:transform 0.15s;
 }
+.t-toggle::before{content:""; display:block; width:0; height:0; margin-left:2px; border-left:15px solid currentColor; border-top:10px solid transparent; border-bottom:10px solid transparent;}
+.t-toggle:active{background:rgba(255,255,255,0.95);}
 .t-toggle[aria-expanded="true"]{transform:rotate(90deg);}
 .t-body{flex:1; min-width:0;}
 .t-title{font-size:14px; font-weight:700; line-height:1.25; overflow-wrap:anywhere;}
@@ -61,8 +63,10 @@
 .tlegend .sw{display:inline-block; width:12px; height:12px; border-radius:4px; vertical-align:-1px; margin-right:5px; background:var(--dom-bg); border:2px solid var(--dom-line);}
 
 /* ---------- Flèches de dépendance (V006) ---------- */
-#tree-root{position:relative;}
-#tree-root.with-deps{padding-right:34px;}
+#tree-root{position:relative; padding-right:34px;}
+/* Largeur des rectangles : −8 % écran plié, −25 % écran déplié (la place libérée sert aux flèches) */
+#tree-root > ul.tree{width:92%;}
+@media (min-width:620px){ #tree-root > ul.tree{width:75%;} }
 svg.tdeps{position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:2;}
 .tdep{stroke-width:2; stroke-linejoin:round; stroke-dasharray:6 4;}
 .tdep.unmet{stroke:var(--warn);}
