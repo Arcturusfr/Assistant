@@ -1,8 +1,7 @@
 /* ==========================================================================
    Assistant — css/tree.css
-   Version : V007 — 2026-10-19 12:35 (heure de Paris)
-   Modifs  : Triangle plier / déplier agrandi (dessiné en CSS) ; rectangles moins larges (75 % déplié,
-             92 % plié) pour laisser de la place aux flèches ; réserve à droite permanente.
+   Version : V008 — 2026-10-19 15:40 (heure de Paris)
+   Modifs  : Traits hiérarchiques parent / enfant plus visibles (plus foncés, 3 px).
    ========================================================================== */
 
 .tree-toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
@@ -13,11 +12,11 @@
 .tbtn:active{background:var(--surface-2);}
 
 .tree, .tchildren{list-style:none; margin:0; padding:0;}
-.tchildren{margin-left:14px; padding-left:16px;}
+.tchildren{margin-left:14px; padding-left:16px; --tline:#6B7488;}
 .tli{position:relative; padding-top:8px;}
 /* Traits hiérarchiques : vertical (::after) + horizontal vers la carte (::before) */
-.tchildren > .tli::before{content:""; position:absolute; left:-16px; top:32px; width:16px; border-top:2px solid var(--border);}
-.tchildren > .tli::after{content:""; position:absolute; left:-16px; top:0; bottom:0; border-left:2px solid var(--border);}
+.tchildren > .tli::before{content:""; position:absolute; left:-16px; top:32px; width:16px; border-top:3px solid var(--tline);}
+.tchildren > .tli::after{content:""; position:absolute; left:-16px; top:0; bottom:0; border-left:3px solid var(--tline);}
 .tchildren > .tli:last-child::after{bottom:auto; height:32px;}
 
 /* Domaines : fond pastel + trait plus foncé (la bordure reste lisible sur le fond) */
