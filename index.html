@@ -1,8 +1,7 @@
 <!--
   Assistant — index.html
-  Version : V005 — 2026-10-18 15:16 (heure de Paris)
-  Modifs  : Badge V004b -> V005. Nouvelle vue « Arbre » : bouton de navigation, section (barre d'outils,
-            arbre, légende), css/tree.css et js/tree.js.
+  Version : V006 — 2026-10-18 21:54 (heure de Paris)
+  Modifs  : Badge V005 -> V006. Vue Arbre : bouton « Dépendances » (flèches de dépendance).
 -->
 <!DOCTYPE html>
 <html lang="fr">
@@ -26,7 +25,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-name">Assistant</span>
-      <span class="version-badge">V005</span>
+      <span class="version-badge">V006</span>
     </div>
     <div class="topbar-actions">
       <button class="icon-btn" id="btn-export" title="Exporter en JSON">
@@ -99,6 +98,7 @@
         <div class="tree-toolbar">
           <button type="button" class="tbtn" id="tree-expand">Tout déplier</button>
           <button type="button" class="tbtn" id="tree-collapse">Tout replier</button>
+          <button type="button" class="tbtn on" id="tree-deps" aria-pressed="true">Dépendances</button>
         </div>
         <div id="tree-root"></div>
         <div class="tlegend" id="tree-legend"></div>
