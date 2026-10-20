@@ -1,12 +1,13 @@
 /* ==========================================================================
    Assistant — js/sheet.js
-   Version : V004b — 2026-10-18 00:40 (heure de Paris)
-   Modifs  : Feuille refaite : sélecteurs à boutons (urgence, importance, complexité, durée,
-             taux d'exécution) qui ne couvrent pas toute la largeur et ne réagissent qu'à un
-             tap (le défilement vertical ne change plus de valeur) ; urgence Auto / Manuelle
-             (valeur proposée depuis l'échéance, détail propre / héritée) ; interrupteur Bloqué ;
-             durée Court / Long ; domaine (projets) ; étiquette libre ; date de début.
-             Le statut n'est plus saisi : il est déduit du taux.
+   Version : V009 — 2026-10-20 21:31 (heure de Paris)
+   Modifs  : Pop-up refaite. Champs essentiels toujours à l'écran (parents en fil d'Ariane, titre,
+             domaine, catégorie, taux d'exécution + Bloqué, dates, note, contenu avec bouton +) ;
+             urgence, importance, complexité, durée, étiquette et dépendances dans l'accordéon
+             « Paramètres avancés » dont la ligne fermée résume les valeurs. Le bouton + (et « voir
+             le contenu ») enregistre d'abord les modifications en cours. Pas de focus automatique
+             sur le titre en modification (le clavier ne surgit plus). Confirmation avant suppression
+             (contenu supprimé et dépendances retirées annoncés).
    Dépend de : config.js, state.js, calc.js, helpers.js
    Expose    : App.sheet.open(id|null), App.sheet.close()
    ========================================================================== */
@@ -14,21 +15,24 @@
   "use strict";
   const { CATEGORIES, DOMAINS, DURATIONS, STATUSES, MAX_DEPTH, LEVELS, PROGRESS_MAX } = App.config;
   const state = App.state;
-  const { uid, persist, findTask, childrenOf, descendantsOf, ancestorsOf, depthOf, subtaskCount, subtaskDoneCount, enterSubtasks, unmetDependencies, isBlockedByDeps, canDependOn } = App.model;
+  const { uid, persist, findTask, childrenOf, descendantsOf, ancestorsOf, depthOf, subtaskCount, subtaskDoneCount, enterSubtasks, isBlockedByDeps, canDependOn } = App.model;
   const calc = App.calc;
   const { toast, escapeHtml, daysUntil } = App.helpers;
 
   const $ = id => document.getElementById(id);
-  const backdrop = $('sheet-backdrop');
+  const backdrop = $('sheet-backdrop'), sheetBody = $('sheet-body'), crumb = $('sheet-crumb');
   const fTitle = $('f-title'), fCategory = $('f-category'), fDomain = $('f-domain');
   const fUrgency = $('f-urgency'), fUrgencyMode = $('f-urgency-mode'), urgencyHint = $('f-urgency-hint');
   const fImportance = $('f-importance');
   const fComplexity = $('f-complexity'), complexityHint = $('f-complexity-hint');
   const fDuration = $('f-duration'), durationHint = $('f-duration-hint');
-  const fProgress = $('f-progress'), fBlocked = $('f-blocked'), progressHint = $('f-progress-hint');
+  const fProgress = $('f-progress'), fBlocked = $('f-blocked'), progressHint = $('f-progress-hint'), fStatus = $('f-status');
   const fStart = $('f-start'), fDue = $('f-due'), fTag = $('f-tag'), fNotes = $('f-notes');
   const fDepSearch = $('f-dep-search'), fDependencies = $('f-dependencies');
   const depBanner = $('dep-pending-banner');
+  const advToggle = $('adv-toggle'), advBody = $('adv-body'), advSummary = $('adv-summary');
+  const depToggle = $('dep-toggle'), depBody = $('dep-body'), depSummary = $('dep-summary');
+  const actionsMain = $('actions-main'), actionsConfirm = $('actions-confirm'), confirmText = $('confirm-text');
 
   /* État du formulaire (séparé de state.tasks jusqu'à « Enregistrer ») */
   let form = null;
@@ -53,6 +57,36 @@
     });
   }
 
+  /* Accordéon : un bouton d'en-tête + un corps masqué par l'attribut hidden */
+  function setAcc(btn, body, open){
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    body.hidden = !open;
+  }
+  // À l'ouverture d'un accordéon, on amène son en-tête en haut de la zone défilante pour voir son contenu
+  function toggleAcc(btn, body){
+    const open = body.hidden;
+    setAcc(btn, body, open);
+    if(open){
+      const delta = btn.getBoundingClientRect().top - sheetBody.getBoundingClientRect().top - 8;
+      sheetBody.scrollTo({ top: sheetBody.scrollTop + delta, behavior:'smooth' });
+    }
+  }
+
+  /* ---------- En-tête : parents en fil d'Ariane ---------- */
+  // Nouvel élément : parents = le périmètre courant et ses ancêtres ; existant : ses ancêtres
+  function renderCrumb(t){
+    let chain;
+    if(t) chain = ancestorsOf(t.id).slice().reverse();
+    else {
+      const p = findTask(state.activeParentId);
+      chain = p ? ancestorsOf(p.id).slice().reverse().concat([p]) : [];
+    }
+    crumb.innerHTML = chain.map(a =>
+      `<div class="crumb-line"><span class="crumb-type">${calc.typeOf(a).label}</span><span class="crumb-name">${escapeHtml(a.title)}</span></div>`
+    ).join('');
+    crumb.style.display = chain.length ? 'block' : 'none';
+  }
+
   /* ---------- Catégorie / domaine ---------- */
   function buildCatPicker(selected){
     fCategory.innerHTML = Object.entries(CATEGORIES).map(([k,c])=>
@@ -71,6 +105,28 @@
     fDomain.querySelectorAll('.dom-opt').forEach(el=>{
       el.addEventListener('click', ()=>{ form.domain = el.dataset.d; buildDomainPicker(); });
     });
+  }
+
+  /* ---------- Résumé de la ligne « Paramètres avancés » ---------- */
+  const unmetOf = ids => ids.map(findTask).filter(d => d && !calc.isDone(d));
+  function renderAdvSummary(){
+    if(!form) return;
+    const shown = currentUrgencyShown();
+    const inh = childrenUrgency(form.task);
+    const c = form.isParent ? calc.effectiveComplexity(form.task) : form.complexity;
+    const d = form.isParent ? calc.effectiveDuration(form.task) : form.duration;
+    const parts = [
+      `Urgence ${Math.max(shown, inh)}${inh > shown ? ' ↑' : ''}`,
+      `Importance ${form.importance}`,
+      `Complexité ${c}`,
+      d === 'long' ? 'Long' : 'Court'
+    ];
+    const tag = fTag.value.trim();
+    if(tag) parts.push(tag);
+    if(selectedDeps.length) parts.push('🔗 ' + selectedDeps.length);
+    const unmet = unmetOf(selectedDeps).length;
+    if(unmet) parts.push('⏳ ' + unmet);
+    advSummary.textContent = parts.join(' · ');
   }
 
   /* ---------- Urgence ---------- */
@@ -117,15 +173,21 @@
     if(inh > shown) lines.push(`↑ Urgence effective ${inh} : héritée de son contenu (propre : ${shown}).`);
     urgencyHint.innerHTML = lines.map(escapeHtml).join('<br>');
     urgencyHint.style.display = lines.length ? 'block' : 'none';
+    renderAdvSummary();
   }
 
-  /* ---------- Complexité / durée / taux ---------- */
+  /* ---------- Importance / complexité / durée ---------- */
+  function renderImportance(){
+    buildSeg(fImportance, levelOptions(LEVELS), form.importance, v=>{ form.importance = v; renderImportance(); }, {});
+    renderAdvSummary();
+  }
   function renderComplexity(){
     const parent = form.isParent;
     const v = parent ? calc.effectiveComplexity(form.task) : form.complexity;
     buildSeg(fComplexity, levelOptions(LEVELS), v, x=>{ form.complexity = x; renderComplexity(); }, {disabled: parent});
     complexityHint.style.display = parent ? 'block' : 'none';
     complexityHint.textContent = parent ? 'Calculée à partir du contenu (non modifiable ici).' : '';
+    renderAdvSummary();
   }
   function renderDuration(){
     const parent = form.isParent;
@@ -133,7 +195,10 @@
     buildSeg(fDuration, DURATIONS.map(d=>({ value:d.id, label:d.label })), v, x=>{ form.duration = x; renderDuration(); }, {disabled: parent});
     durationHint.style.display = parent ? 'block' : 'none';
     durationHint.textContent = parent ? 'Long dès qu’un élément du contenu est long (non modifiable ici).' : '';
+    renderAdvSummary();
   }
+
+  /* ---------- Taux d'exécution (essentiel) ---------- */
   function renderProgress(){
     const parent = form.isParent;
     const level = parent ? calc.effectiveProgress(form.task) : form.progress;
@@ -141,14 +206,14 @@
     buildSeg(fProgress, Array.from({length:PROGRESS_MAX+1}, (_,i)=>({ value:i, label:(i*25)+' %' })), level, x=>{ form.progress = x; renderProgress(); }, {disabled: frozen});
     fBlocked.classList.toggle('on', form.blocked);
     fBlocked.setAttribute('aria-pressed', form.blocked ? 'true' : 'false');
-    const status = STATUSES.find(s => s.id === (level === 0 ? 'todo' : (level === PROGRESS_MAX ? 'done' : 'doing'))).label;
-    const bits = [`Statut déduit : ${status}.`];
-    if(parent) bits.push('Taux calculé à partir du contenu.');
-    else if(form.blocked) bits.push('Bloqué : le taux est figé.');
-    progressHint.textContent = bits.join(' ');
+    fStatus.textContent = STATUSES.find(s => s.id === (level === 0 ? 'todo' : (level === PROGRESS_MAX ? 'done' : 'doing'))).label;
+    fStatus.title = 'Statut déduit du taux';
+    const hint = parent ? 'Taux calculé à partir du contenu.' : (form.blocked ? 'Bloqué : le taux est figé.' : '');
+    progressHint.textContent = hint;
+    progressHint.style.display = hint ? 'block' : 'none';
   }
 
-  /* ---------- Dépendances ---------- */
+  /* ---------- Dépendances (dans l'accordéon avancé) ---------- */
   function pathOf(t){
     return ancestorsOf(t.id).reverse().map(a=>a.title).join(' › ');
   }
@@ -182,13 +247,12 @@
         if(selectedDeps.includes(id)) selectedDeps = selectedDeps.filter(d=>d!==id);
         else selectedDeps.push(id);
         buildDepPicker(currentId, fDepSearch.value);
+        depsChanged();
       });
     });
   }
-
-  function renderDepBanner(t){
-    if(!t){ depBanner.style.display = 'none'; return; }
-    const unmet = unmetDependencies(t);
+  function renderDepBanner(){
+    const unmet = unmetOf(selectedDeps);
     if(unmet.length === 0){ depBanner.style.display = 'none'; return; }
     depBanner.style.display = 'block';
     depBanner.innerHTML = `<div class="dep-banner"><span class="ic">⏳</span><div>
@@ -196,28 +260,56 @@
       ${unmet.map(d=>escapeHtml(d.title)).join(' · ')}
     </div></div>`;
   }
+  function renderDepSummary(){
+    const n = selectedDeps.length;
+    const unmet = unmetOf(selectedDeps).length;
+    depSummary.textContent = n
+      ? `${n} élément${n>1?'s':''}${unmet ? ` · ⏳ ${unmet} en attente` : ''}`
+      : 'Aucune dépendance';
+  }
+  function depsChanged(){
+    renderDepBanner();
+    renderDepSummary();
+    renderAdvSummary();
+  }
 
-  // Le bloc de contenu (Tâches / Sous-tâches) n'existe que si le niveau suivant est autorisé.
-  // Pour un nouvel élément, il faut d'abord l'enregistrer.
-  function updateSubtasksField(t){
-    const field = $('subtasks-field');
-    const box = $('subtasks-box');
-    const label = $('subtasks-label');
+  /* ---------- Contenu : compteur + bouton + (si le niveau suivant est autorisé) ---------- */
+  function renderChildren(t){
+    const field = $('subtasks-field'), box = $('subtasks-box'), hint = $('subtasks-hint');
     const depth = t ? depthOf(t) : calc.contextDepth();
     if(depth >= MAX_DEPTH - 1){ field.style.display = 'none'; return; }
-    const childWord = calc.typeAtDepth(depth).children;
-    label.textContent = childWord;
+    const type = calc.typeAtDepth(depth), childType = calc.typeAtDepth(depth + 1);
+    const single = childType.label.toLowerCase(), plural = single + 's';
+    $('subtasks-label').textContent = type.children;
     field.style.display = 'block';
-    if(!t){
-      box.innerHTML = `<div class="subtasks-hint">Enregistrez d'abord cet élément pour pouvoir lui ajouter des ${childWord.toLowerCase()}.</div>`;
-      return;
-    }
-    const count = subtaskCount(t.id), done = subtaskDoneCount(t.id);
-    box.innerHTML = `<button type="button" class="subtasks-open-btn" id="subtasks-open-btn">📁 ${count ? `${done}/${count} ${childWord.toLowerCase()}` : 'Ajouter des ' + childWord.toLowerCase()} →</button>`;
-    $('subtasks-open-btn').addEventListener('click', ()=>{
-      close();
-      enterSubtasks(t.id);
-    });
+    const count = t ? subtaskCount(t.id) : 0, done = t ? subtaskDoneCount(t.id) : 0;
+    const openTxt = count
+      ? `📁 ${count} ${count > 1 ? plural : single} · ${done} terminée${done > 1 ? 's' : ''} →`
+      : `Aucune ${single}`;
+    box.innerHTML = `<button type="button" class="child-open" id="child-open" ${count ? '' : 'disabled'}>${openTxt}</button>
+      <button type="button" class="child-add" id="child-add" title="${childType.add}" aria-label="${childType.add}">+</button>`;
+    $('child-open').addEventListener('click', onChildOpen);
+    $('child-add').addEventListener('click', onChildAdd);
+    hint.textContent = t ? '' : "« + » enregistre d'abord cet élément.";
+    hint.style.display = t ? 'none' : 'block';
+  }
+  // Voir le contenu : on enregistre d'abord les modifications en cours, puis on « zoome »
+  function onChildOpen(){
+    const t = commit();
+    if(!t) return;
+    persist(); close();
+    enterSubtasks(t.id);
+  }
+  // + : on enregistre d'abord les modifications en cours, puis on ouvre la création d'un enfant
+  function onChildAdd(){
+    const t = commit();
+    if(!t) return;
+    persist(); close();
+    if(App.tree && App.tree.expand) App.tree.expand(t.id);   // (si la vue Arbre l'expose)
+    state.activeParentId = t.id;
+    App.renderAll();
+    toast('Enregistré', 1200);
+    open(null);
   }
 
   /* ---------- Ouverture ---------- */
@@ -227,6 +319,7 @@
     const type = t ? calc.typeOf(t) : calc.typeAtDepth(calc.contextDepth());
     $('sheet-title').textContent = t ? type.editTitle : type.newTitle;
     $('btn-delete').style.display = t ? 'block' : 'none';
+    resetConfirm();
 
     const isRoot = t ? !t.parentId : state.activeParentId === null;
     form = {
@@ -245,8 +338,10 @@
     };
     // Une urgence « auto » sans échéance retombe sur la valeur saisie
     if(form.urgencyMode === 'auto' && !(t && t.due)) form.urgencyMode = 'manual';
+    selectedDeps = t ? (t.dependsOn || []).slice() : [];
 
     fTitle.value = t ? t.title : '';
+    renderCrumb(t);
     buildCatPicker(t ? t.category : 'achat');
     $('domain-field').style.display = isRoot ? 'block' : 'none';
     if(isRoot) buildDomainPicker();
@@ -256,34 +351,36 @@
     fTag.value = t ? (t.tag || '') : '';
     fNotes.value = t ? (t.notes||'') : '';
 
+    renderProgress();
     renderUrgency();
     renderImportance();
     renderComplexity();
     renderDuration();
-    renderProgress();
 
-    selectedDeps = t ? (t.dependsOn || []).slice() : [];
     fDepSearch.value = '';
     buildDepPicker(state.editingId, '');
-    renderDepBanner(t);
-    updateSubtasksField(t);
+    depsChanged();
+    renderChildren(t);
 
+    setAcc(advToggle, advBody, false);
+    setAcc(depToggle, depBody, false);
     backdrop.classList.add('open');
-    setTimeout(()=> fTitle.focus(), 50);
-  }
-  function renderImportance(){
-    buildSeg(fImportance, levelOptions(LEVELS), form.importance, v=>{ form.importance = v; renderImportance(); }, {});
+    sheetBody.scrollTop = 0;   // après l'affichage : une zone masquée mémorise l'ancienne position
+    // Création : on saisit tout de suite le titre. Modification : pas de clavier intempestif.
+    if(!t) setTimeout(()=> fTitle.focus(), 50);
   }
   function close(){
     backdrop.classList.remove('open');
     state.editingId = null;
     form = null;
+    resetConfirm();
   }
 
   /* ---------- Enregistrement ---------- */
-  function save(){
+  // Applique le formulaire à state.tasks (sans fermer ni rendre). Renvoie l'élément, ou null si le titre manque.
+  function commit(){
     const title = fTitle.value.trim();
-    if(!title){ toast('Ajoutez un titre'); fTitle.focus(); return; }
+    if(!title){ toast('Ajoutez un titre'); fTitle.focus(); return null; }
     const cat = fCategory.querySelector('.cat-opt.sel')?.dataset.cat || 'achat';
     const due = fDue.value || null;
     const auto = form.urgencyMode === 'auto' && !!due;
@@ -319,6 +416,12 @@
       }, common);
       state.tasks.push(savedTask);
     }
+    return savedTask;
+  }
+
+  function save(){
+    const savedTask = commit();
+    if(!savedTask) return;
     persist();
     close();
     App.renderAll();
@@ -329,6 +432,27 @@
     }
   }
 
+  /* ---------- Suppression avec confirmation ---------- */
+  function resetConfirm(){
+    actionsConfirm.style.display = 'none';
+    actionsMain.style.display = 'flex';
+  }
+  function askDelete(){
+    if(!state.editingId) return;
+    const t = findTask(state.editingId);
+    if(!t) return;
+    const ids = new Set([t.id, ...descendantsOf(t.id).map(x=>x.id)]);
+    const inside = ids.size - 1;
+    const dependents = state.tasks.filter(x => !ids.has(x.id) && (x.dependsOn || []).some(d => ids.has(d))).length;
+    let msg = `Supprimer ${calc.typeOf(t).inWord} « ${t.title} » ?`;
+    if(inside) msg += ` Son contenu (${inside} élément${inside > 1 ? 's' : ''}) sera supprimé aussi.`;
+    if(dependents) msg += ` ${dependents} autre${dependents > 1 ? 's' : ''} élément${dependents > 1 ? 's' : ''} en dépendai${dependents > 1 ? 'ent' : 't'} : le lien sera retiré.`;
+    msg += ' Cette action est définitive.';
+    confirmText.textContent = msg;
+    actionsMain.style.display = 'none';
+    actionsConfirm.style.display = 'block';
+    $('btn-confirm-cancel').focus();
+  }
   function remove(){
     if(!state.editingId) return;
     // Supprimer un élément supprime aussi tout son contenu
@@ -338,6 +462,8 @@
     state.tasks.forEach(t=>{
       if(t.dependsOn) t.dependsOn = t.dependsOn.filter(id=>!idsToDelete.has(id));
     });
+    // Si l'on était « zoomé » dans un élément supprimé, on remonte à la racine
+    if(state.activeParentId && idsToDelete.has(state.activeParentId)) state.activeParentId = null;
     persist();
     close();
     App.renderAll();
@@ -352,13 +478,19 @@
     else if(!fDue.value && form.urgencyMode === 'auto'){ form.urgency = currentUrgencyShown(); form.urgencyMode = 'manual'; }
     renderUrgency();
   });
+  fTag.addEventListener('input', renderAdvSummary);
+  fTitle.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); fTitle.blur(); } });
   fBlocked.addEventListener('click', ()=>{ form.blocked = !form.blocked; renderProgress(); });
   fDepSearch.addEventListener('input', ()=> buildDepPicker(state.editingId, fDepSearch.value));
+  advToggle.addEventListener('click', ()=> toggleAcc(advToggle, advBody));
+  depToggle.addEventListener('click', ()=> toggleAcc(depToggle, depBody));
   $('fab-add').addEventListener('click', ()=> open(null));
   $('btn-cancel').addEventListener('click', close);
   backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) close(); });
   $('btn-save').addEventListener('click', save);
-  $('btn-delete').addEventListener('click', remove);
+  $('btn-delete').addEventListener('click', askDelete);
+  $('btn-confirm-cancel').addEventListener('click', resetConfirm);
+  $('btn-confirm-delete').addEventListener('click', remove);
 
   App.sheet = { open, close };
 })();
