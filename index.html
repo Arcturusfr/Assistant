@@ -1,7 +1,10 @@
 <!--
   Assistant — index.html
-  Version : V008 — 2026-10-19 15:40 (heure de Paris)
-  Modifs  : Badge V007 -> V008. Traits hiérarchiques de la vue Arbre plus visibles (tree.css).
+  Version : V009 — 2026-10-20 21:31 (heure de Paris)
+  Modifs  : Badge V007 -> V009. Pop-up de création / modification refaite : en-tête fixe (libellé,
+            parents, titre), corps défilant (champs essentiels), accordéon « Paramètres avancés »,
+            pied fixe (Supprimer / Annuler / Enregistrer) avec confirmation de suppression.
+            Reste inchangé : voir V007.
 -->
 <!DOCTYPE html>
 <html lang="fr">
@@ -25,7 +28,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-name">Assistant</span>
-      <span class="version-badge">V008</span>
+      <span class="version-badge">V009</span>
     </div>
     <div class="topbar-actions">
       <button class="icon-btn" id="btn-export" title="Exporter en JSON">
@@ -109,96 +112,138 @@
   <button class="fab" id="fab-add" title="Ajouter">+</button>
 </div>
 
-<!-- TASK SHEET -->
+<!-- TASK SHEET : en-tête fixe / corps défilant / pied fixe -->
 <div class="sheet-backdrop" id="sheet-backdrop">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <h2 class="sheet-title" id="sheet-title">Nouveau projet</h2>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
 
-    <div class="field">
-      <label>Titre</label>
-      <input type="text" id="f-title" placeholder="Ex. Renouveler la carte grise" maxlength="80">
+    <!-- En-tête : toujours visible -->
+    <div class="sheet-head">
+      <div class="sheet-handle"></div>
+      <h2 class="sheet-title" id="sheet-title">Nouveau projet</h2>
+      <div class="sheet-crumb" id="sheet-crumb" style="display:none;"></div>
+      <input type="text" id="f-title" class="title-input" aria-label="Titre" placeholder="Titre (ex. Carte grise)" maxlength="80">
     </div>
 
-    <div class="field">
-      <label>Catégorie</label>
-      <div class="cat-picker" id="f-category"></div>
+    <!-- Corps : champs essentiels puis paramètres avancés -->
+    <div class="sheet-body" id="sheet-body">
+
+      <div class="field" id="domain-field" style="display:none;">
+        <label>Domaine</label>
+        <div class="dom-picker" id="f-domain"></div>
+      </div>
+
+      <div class="field">
+        <label>Catégorie</label>
+        <div class="cat-picker" id="f-category"></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label-row">
+          <label>Taux d'exécution</label>
+          <span class="status-chip" id="f-status"></span>
+          <button type="button" class="toggle-btn sm" id="f-blocked" aria-pressed="false">🔒 Bloqué</button>
+        </div>
+        <div class="seg-wrap"><div class="seg seg-5" id="f-progress"></div></div>
+        <div class="field-hint" id="f-progress-hint" style="display:none;"></div>
+      </div>
+
+      <div class="field">
+        <div class="row-2">
+          <div>
+            <label for="f-start">Début</label>
+            <input type="date" id="f-start">
+          </div>
+          <div>
+            <label for="f-due">Échéance</label>
+            <input type="date" id="f-due">
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-notes">Note</label>
+        <textarea id="f-notes" rows="2" placeholder="Détails, contacts, références…"></textarea>
+      </div>
+
+      <div class="field" id="subtasks-field" style="display:none;">
+        <label id="subtasks-label">Sous-tâches</label>
+        <div class="subtasks-box" id="subtasks-box"></div>
+        <div class="field-hint" id="subtasks-hint"></div>
+      </div>
+
+      <!-- Paramètres avancés (accordéon) -->
+      <div class="acc" id="adv-acc">
+        <button type="button" class="acc-head" id="adv-toggle" aria-expanded="false" aria-controls="adv-body">
+          <span class="acc-title">Paramètres avancés</span>
+          <span class="acc-chev" aria-hidden="true"></span>
+          <span class="acc-sum" id="adv-summary"></span>
+        </button>
+        <div class="acc-body" id="adv-body" hidden>
+
+          <div class="field">
+            <label>Urgence</label>
+            <div class="seg-wrap"><div class="seg" id="f-urgency"></div></div>
+            <div class="seg-wrap" style="margin-top:8px;"><div class="seg seg-2" id="f-urgency-mode"></div></div>
+            <div class="field-hint" id="f-urgency-hint"></div>
+          </div>
+
+          <div class="field">
+            <label>Importance</label>
+            <div class="seg-wrap"><div class="seg" id="f-importance"></div></div>
+          </div>
+
+          <div class="field">
+            <label>Complexité</label>
+            <div class="seg-wrap"><div class="seg" id="f-complexity"></div></div>
+            <div class="field-hint" id="f-complexity-hint" style="display:none;"></div>
+          </div>
+
+          <div class="field">
+            <label>Durée</label>
+            <div class="seg-wrap"><div class="seg seg-2" id="f-duration"></div></div>
+            <div class="field-hint" id="f-duration-hint" style="display:none;"></div>
+          </div>
+
+          <div class="field">
+            <label for="f-tag">Étiquette</label>
+            <input type="text" id="f-tag" class="short" placeholder="Ex. Reporté" maxlength="24">
+          </div>
+
+          <!-- Dépendances : second accordéon -->
+          <div class="acc sub">
+            <button type="button" class="acc-head" id="dep-toggle" aria-expanded="false" aria-controls="dep-body">
+              <span class="acc-title">Dépend de</span>
+              <span class="acc-chev" aria-hidden="true"></span>
+              <span class="acc-sum" id="dep-summary"></span>
+            </button>
+            <div class="acc-body" id="dep-body" hidden>
+              <div class="field" id="dep-pending-banner" style="display:none;"></div>
+              <input type="text" id="f-dep-search" class="dep-search" placeholder="Filtrer les tâches…" aria-label="Filtrer les éléments">
+              <div class="dep-picker" id="f-dependencies"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
 
-    <div class="field" id="domain-field" style="display:none;">
-      <label>Domaine</label>
-      <div class="dom-picker" id="f-domain"></div>
-    </div>
-
-    <div class="field">
-      <label>Urgence</label>
-      <div class="seg-wrap"><div class="seg" id="f-urgency"></div></div>
-      <div class="seg-wrap" style="margin-top:8px;"><div class="seg seg-2" id="f-urgency-mode"></div></div>
-      <div class="field-hint" id="f-urgency-hint"></div>
-    </div>
-
-    <div class="field">
-      <label>Importance</label>
-      <div class="seg-wrap"><div class="seg" id="f-importance"></div></div>
-    </div>
-
-    <div class="field">
-      <label>Complexité</label>
-      <div class="seg-wrap"><div class="seg" id="f-complexity"></div></div>
-      <div class="field-hint" id="f-complexity-hint" style="display:none;"></div>
-    </div>
-
-    <div class="field">
-      <label>Durée</label>
-      <div class="seg-wrap"><div class="seg seg-2" id="f-duration"></div></div>
-      <div class="field-hint" id="f-duration-hint" style="display:none;"></div>
-    </div>
-
-    <div class="field">
-      <label>Taux d'exécution</label>
-      <div class="seg-wrap"><div class="seg seg-5" id="f-progress"></div></div>
-      <div class="seg-wrap" style="margin-top:8px;"><button type="button" class="toggle-btn" id="f-blocked">🔒 Bloqué</button></div>
-      <div class="field-hint" id="f-progress-hint"></div>
-    </div>
-
-    <div class="field">
-      <label>Date de début (optionnel)</label>
-      <input type="date" id="f-start">
-    </div>
-
-    <div class="field">
-      <label>Échéance (optionnel)</label>
-      <input type="date" id="f-due">
-    </div>
-
-    <div class="field">
-      <label>Étiquette (optionnel)</label>
-      <input type="text" id="f-tag" class="short" placeholder="Ex. Reporté" maxlength="24">
-    </div>
-
-    <div class="field" id="dep-pending-banner" style="display:none;"></div>
-
-    <div class="field">
-      <label>Dépend de (optionnel)</label>
-      <input type="text" id="f-dep-search" placeholder="Filtrer les tâches…" style="margin-bottom:8px;">
-      <div class="dep-picker" id="f-dependencies"></div>
-    </div>
-
-    <div class="field" id="subtasks-field" style="display:none;">
-      <label id="subtasks-label">Sous-tâches</label>
-      <div class="subtasks-box" id="subtasks-box"></div>
-    </div>
-
-    <div class="field">
-      <label>Notes (optionnel)</label>
-      <textarea id="f-notes" placeholder="Détails, contacts, références…"></textarea>
-    </div>
-
+    <!-- Pied : toujours visible -->
     <div class="sheet-actions">
-      <button class="btn btn-danger-ghost" id="btn-delete" style="display:none;">Supprimer</button>
-      <button class="btn btn-ghost" id="btn-cancel">Annuler</button>
-      <button class="btn btn-primary" id="btn-save">Enregistrer</button>
+      <div class="actions-row" id="actions-main">
+        <button class="btn btn-danger-ghost" id="btn-delete" style="display:none;">Supprimer</button>
+        <button class="btn btn-ghost" id="btn-cancel">Annuler</button>
+        <button class="btn btn-primary" id="btn-save">Enregistrer</button>
+      </div>
+      <div class="actions-confirm" id="actions-confirm" style="display:none;" role="alertdialog" aria-live="assertive">
+        <div class="confirm-text" id="confirm-text"></div>
+        <div class="actions-row">
+          <button class="btn btn-ghost" id="btn-confirm-cancel">Annuler</button>
+          <button class="btn btn-danger" id="btn-confirm-delete">Supprimer</button>
+        </div>
+      </div>
     </div>
+
   </div>
 </div>
 
