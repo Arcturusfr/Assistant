@@ -1,9 +1,8 @@
 /* ==========================================================================
    Assistant — js/tree.js
-   Version : V007 — 2026-10-19 12:35 (heure de Paris)
-   Modifs  : Flèches : départ dans le tiers inférieur du côté droit du rectangle, arrivée dans le tiers
-             supérieur (plusieurs flèches = réparties dans le tiers) ; couloirs attribués pour limiter
-             les croisements. Bouton plier / déplier : triangle dessiné en CSS (plus grand). Légende mise à jour.
+   Version : V009a — 2026-10-21 13:51 (heure de Paris)
+   Modifs  : Ajout de App.tree.expand(id) : déplie un élément et ses ancêtres (utilisée par la pop-up
+             après un + pour que l'enfant créé reste visible). Reste inchangé : voir V007.
    Dépend de : config.js, state.js, calc.js, helpers.js (appelle App.sheet / App.renderAll à l'exécution)
    ========================================================================== */
 (function(){
@@ -223,6 +222,12 @@
   window.addEventListener('resize', scheduleArrows);
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleArrows);
 
+  // Déplie un élément et tous ses ancêtres (appelé par la pop-up avant de créer un enfant)
+  function expand(id){
+    expanded.add(id);
+    ancestorsOf(id).forEach(a => expanded.add(a.id));
+  }
+
   renderLegend();
-  App.tree = { render };
+  App.tree = { render, expand };
 })();
