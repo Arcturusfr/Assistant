@@ -21,7 +21,7 @@
 
 ## Limites connues
 
-- Vue Arbre : les flèches passent par une gouttière à droite (peu lisibles si beaucoup de dépendances : masquer via « Dépendances ») ; la vue ignore le « zoom » des autres vues ; le bouton + d'une carte zoome les autres vues sur cet élément (bandeau « ← Retour »). **Point UX reporté** : le zoom reste à reprendre (le bouton + de la pop-up enregistre d'abord puis zoome aussi). Dans la vue Arbre, un enfant créé depuis la pop-up peut rester masqué si son parent est replié (l'Arbre n'expose pas encore de fonction pour le déplier).
+- Vue Arbre : les flèches passent par une gouttière à droite (peu lisibles si beaucoup de dépendances : masquer via « Dépendances ») ; la vue ignore le « zoom » des autres vues ; le bouton + d'une carte zoome les autres vues sur cet élément (bandeau « ← Retour »). **Point UX reporté** : le zoom reste à reprendre (le bouton + de la pop-up enregistre d'abord puis zoome aussi).
 - Le statut n'est plus saisi dans la feuille : il se déduit du taux d'exécution (affiché en indication). Le Kanban reste un moyen rapide de changer le statut d'une feuille.
 - Migration (rappel) : « En cours » est devenu taux 2 (50 %), tous les Projets ont le domaine « Autre » (à renseigner à la main), toutes les urgences sont en mode Manuel.
 - Sur une bulle de complexité 1, la poignée est maintenant décalée vers l'extérieur : la bulle se déplace depuis son centre et se redimensionne depuis la poignée.
